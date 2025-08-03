@@ -1,31 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
 const supabase = createClient();
-import { Mountain, Route, User, Climb, Review, MountainWithRoutes, UserWithClimbs } from '../types/database';
-
-// Mountains
-export async function getMountains(): Promise<Mountain[]> {
-  const { data, error } = await supabase
-    .from('mountains')
-    .select('*')
-    .order('name');
-  
-  if (error) throw error;
-  return data;
-}
-
-export async function getMountainWithRoutes(mountainId: string): Promise<MountainWithRoutes | null> {
-  const { data, error } = await supabase
-    .from('mountains')
-    .select(`
-      *,
-      routes (*)
-    `)
-    .eq('id', mountainId)
-    .single();
-  
-  if (error) throw error;
-  return data;
-}
+import { Route, User, Climb, Review, UserWithClimbs } from '../types/database';
 
 // Routes
 export async function getMountainRoutes(mountainId: string): Promise<Route[]> {
@@ -89,17 +64,6 @@ export async function createClimb(climb: Omit<Climb, 'id' | 'created_at' | 'upda
 }
 
 // Reviews
-export async function getMountainReviews(mountainId: string): Promise<Review[]> {
-  const { data, error } = await supabase
-    .from('reviews')
-    .select('*')
-    .eq('mountain_id', mountainId)
-    .order('created_at', { ascending: false });
-  
-  if (error) throw error;
-  return data;
-}
-
 export async function createReview(review: Omit<Review, 'id' | 'created_at' | 'updated_at'>) {
   const { data, error } = await supabase
     .from('reviews')
