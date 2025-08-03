@@ -1,4 +1,5 @@
-import { supabase } from './supabase';
+import { createClient } from './supabase/client';
+const supabase = createClient();
 
 export interface PhotoUploadResult {
   success: boolean;

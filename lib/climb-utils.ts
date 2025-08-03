@@ -1,4 +1,5 @@
-import { supabase } from './supabase';
+import { createClient } from './supabase/client';
+const supabase = createClient();
 
 // 写真データの型定義
 export interface ClimbPhoto {
