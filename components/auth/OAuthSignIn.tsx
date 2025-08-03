@@ -2,8 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 
-// 仮のButtonコンポーネント。shadcn/uiが正しく設定されていないため。
-const Button = ({ children, variant, className, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { children: React.ReactNode; variant?: string; className?: string; }) => (
+const Button = ({ children, className, variant, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { children: React.ReactNode; className?: string; variant?: string }) => (
   <button {...props} className={className}>{children}</button>
 );
 

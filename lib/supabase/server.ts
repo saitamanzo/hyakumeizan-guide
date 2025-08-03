@@ -12,6 +12,7 @@ export function createClient() {
         get(name: string) {
           return cookieStore.get(name)?.value
         },
+        // ... existing code ...
         set(name: string, value: string, options: CookieOptions) {
           try {
             cookieStore.set({ name, value, ...options })
@@ -30,6 +31,7 @@ export function createClient() {
             // user sessions.
           }
         },
+// ... existing code ...
       },
     }
   )

@@ -63,45 +63,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-// ユーザープロファイル確保
-async function ensureUserProfile(user: User) {
-  const supabase = createClient();
-  try {
-    console.log('ensureUserProfile: 開始 - userID:', user.id);
-    
-    const { error } = await supabase
-      .from('users')
-      .select('id')
-      .eq('id', user.id)
-      .single();
-
-    console.log('ensureUserProfile: プロファイル確認結果', { error: error?.code });
-
-    if (error && error.code === 'PGRST116') {
-      console.log('ensureUserProfile: プロファイル作成開始');
-      // ユーザーが存在しない場合は作成
-      const { error: insertError } = await supabase.from('users').insert({
-        id: user.id,
-        display_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'New User',
-        experience_level: 'beginner',
-        mountains_climbed: 0,
-      });
-      
-      if (insertError) {
-        console.error('ensureUserProfile: プロファイル作成エラー:', insertError);
-        // プロファイル作成エラー（通常処理継続）
-      } else {
-        console.log('ensureUserProfile: プロファイル作成成功');
-      }
-    } else if (!error) {
-      console.log('ensureUserProfile: プロファイル既存');
-    }
-  } catch (err) {
-    console.error('ensureUserProfile: 例外発生:', err);
-    // ユーザープロファイルエラー（通常処理継続）
-  }
-}
-
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
