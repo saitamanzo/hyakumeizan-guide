@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
 import { SupabaseClient, Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 
@@ -20,6 +21,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isClient, setIsClient] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     // クライアントサイドであることを確認
@@ -66,11 +68,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (error) {
       console.error('AuthProvider: Error signing out:', error);
     } else {
-      console.log('AuthProvider: Sign out successful. Clearing local state.');
-      setSession(null);
-      setUser(null);
-      // 念のためルートにリダイレクト
-      window.location.href = '/';
+      console.log('AuthProvider: Sign out successful. Redirecting to home.');
+      router.push('/');
+      router.refresh();
     }
   };
 
