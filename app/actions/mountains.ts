@@ -1,19 +1,22 @@
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+'use server';
+
+import { supabaseServer } from '@/lib/supabase-server';
 import type { Mountain } from '@/types/database';
 
-export async function getMountains() {
-  const supabase = createServerComponentClient({ cookies });
-  
-  const { data: mountains, error } = await supabase
-    .from('mountains')
-    .select('*')
-    .order('name');
+export async function getMountains(): Promise<Mountain[]> {
+  try {
+    const { data: mountains, error } = await supabaseServer
+      .from('mountains')
+      .select('*')
+      .order('name');
     
-  if (error) {
-    console.error('Error fetching mountains:', error);
-    throw error;
+    if (error) {
+      throw error;
+    }
+    
+    return mountains as Mountain[];
+  } catch (err) {
+    console.error('getMountains: エラー発生:', err);
+    throw err;
   }
-  
-  return mountains as Mountain[];
 }

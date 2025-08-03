@@ -1,20 +1,29 @@
 import { notFound } from 'next/navigation';
 import { getMountainWithRoutes, getMountainReviews } from '@/app/actions/mountain';
+import ReviewSection from '@/components/ReviewSection';
+import ClimbingPlan from '@/components/ClimbingPlan';
+import ClimbRecord from '@/components/ClimbRecord';
+import { WeatherMapIntegration, ImageGalleryWrapper } from '@/components/MountainClientComponents';
 
 export default async function MountainPage({
   params
 }: {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }) {
   try {
+    const { id } = await params;
     const [mountain, reviews] = await Promise.all([
-      getMountainWithRoutes(params.id),
-      getMountainReviews(params.id)
+      getMountainWithRoutes(id),
+      getMountainReviews(id)
     ]);
 
     if (!mountain) {
       notFound();
     }
+
+    // デフォルト座標（富士山）
+    const latitude = mountain.latitude || 35.360833;
+    const longitude = mountain.longitude || 138.727500;
 
     return (
       <div className="py-8">
@@ -35,6 +44,34 @@ export default async function MountainPage({
             </div>
           </div>
 
+          {/* 天気・地図 - 統合レイアウト */}
+          <div className="mt-8">
+            <WeatherMapIntegration 
+              latitude={latitude}
+              longitude={longitude}
+              mountainName={mountain.name}
+              elevation={mountain.elevation}
+            />
+          </div>
+
+          {/* 登山計画 */}
+          <div className="mt-8">
+            <ClimbingPlan 
+              mountainName={mountain.name}
+              mountainId={id}
+              difficulty={mountain.difficulty_level || '中級'}
+              elevation={mountain.elevation}
+            />
+          </div>
+
+          {/* 登山記録 */}
+          <div className="mt-8">
+            <ClimbRecord 
+              mountainName={mountain.name}
+              mountainId={id}
+            />
+          </div>
+
           {/* 基本情報 */}
           <div className="mt-8 bg-white shadow-sm rounded-lg p-6">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">基本情報</h2>
@@ -49,6 +86,14 @@ export default async function MountainPage({
                     <dt className="text-sm font-medium text-gray-500">ベストシーズン</dt>
                     <dd className="mt-1 text-base text-gray-900">{mountain.best_season || '情報なし'}</dd>
                   </div>
+                  {(mountain.latitude && mountain.longitude) && (
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">座標</dt>
+                      <dd className="mt-1 text-base text-gray-900">
+                        {mountain.latitude.toFixed(6)}, {mountain.longitude.toFixed(6)}
+                      </dd>
+                    </div>
+                  )}
                 </dl>
               </div>
               <div>
@@ -115,56 +160,17 @@ export default async function MountainPage({
             </div>
           </div>
 
-          {/* レビュー */}
-          <div className="mt-8">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-bold text-gray-900">レビュー</h2>
-              <button className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
-                レビューを書く
-              </button>
-            </div>
-            <div className="space-y-6">
-              {reviews.length > 0 ? (
-                reviews.map((review) => (
-                  <div key={review.id} className="bg-white shadow-sm rounded-lg p-6">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">
-                          {review.users?.display_name || '匿名ユーザー'}
-                        </p>
-                        <div className="mt-1 flex items-center">
-                          {[...Array(5)].map((_, i) => (
-                            <svg
-                              key={i}
-                              className={`h-5 w-5 ${
-                                i < review.rating ? 'text-yellow-400' : 'text-gray-300'
-                              }`}
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
-                            >
-                              <path
-                                fillRule="evenodd"
-                                d="M10 15.585l-6.328 3.326 1.209-7.043L.342 7.538l7.057-1.026L10 0l2.601 6.512 7.057 1.026-4.539 4.33 1.209 7.043L10 15.585z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
-                          ))}
-                        </div>
-                      </div>
-                      <p className="text-sm text-gray-500">
-                        {new Date(review.created_at).toLocaleDateString('ja-JP')}
-                      </p>
-                    </div>
-                    <p className="mt-4 text-base text-gray-900">{review.content}</p>
-                  </div>
-                ))
-              ) : (
-                <p className="text-gray-500 text-center py-8">
-                  まだレビューがありません。最初のレビューを投稿してみませんか？
-                </p>
-              )}
-            </div>
-          </div>
+          {/* 画像ギャラリー */}
+          <ImageGalleryWrapper 
+            mountainId={id}
+            mountainName={mountain.name}
+          />
+
+          {/* レビューセクション */}
+          <ReviewSection 
+            reviews={reviews} 
+            mountainId={id}
+          />
         </div>
       </div>
     );

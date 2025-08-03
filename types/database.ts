@@ -8,6 +8,8 @@ export type Mountain = {
   description: string | null;
   best_season: string | null;
   difficulty_level: string | null;
+  latitude: number | null;
+  longitude: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -47,6 +49,8 @@ export type Climb = {
   end_time: string | null;
   weather_conditions: string | null;
   notes: string | null;
+  is_public: boolean | null;
+  published_at: string | null;
   difficulty_rating: number | null;
   created_at: string;
   updated_at: string;
@@ -59,6 +63,24 @@ export type Review = {
   route_id: string | null;
   rating: number;
   content: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type Plan = {
+  id: string;
+  user_id: string;
+  mountain_id: string;
+  title: string;
+  description: string | null;
+  planned_date: string | null;
+  estimated_duration: number | null; // 分単位
+  difficulty_level: 'easy' | 'moderate' | 'hard' | null;
+  route_plan: string | null;
+  equipment_list: string[] | null;
+  notes: string | null;
+  is_public: boolean | null;
+  published_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -79,5 +101,10 @@ export type UserWithClimbs = User & {
 export type ClimbWithDetails = Climb & {
   mountain: Mountain;
   route?: Route;
+  user: User;
+}
+
+export type PlanWithDetails = Plan & {
+  mountain: Mountain;
   user: User;
 }

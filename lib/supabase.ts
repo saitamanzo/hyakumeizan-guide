@@ -9,5 +9,15 @@ if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
 
 export const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  {
+    auth: {
+      persistSession: true,
+      storageKey: 'sb-hyakumeizan-auth-token',
+      storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      debug: process.env.NODE_ENV === 'development',
+    },
+  }
 )
