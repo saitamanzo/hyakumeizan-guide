@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 
-const Button = ({ children, className, variant, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { children: React.ReactNode; className?: string; variant?: string }) => (
+const Button = ({ children, className, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { children: React.ReactNode; className?: string; }) => (
   <button {...props} className={className}>{children}</button>
 );
 
@@ -32,7 +32,7 @@ export default function OAuthSignIn({ provider, children }: { provider: 'google'
   };
 
   return (
-    <Button onClick={handleOAuthSignIn} variant="outline" className="w-full">
+    <Button onClick={handleOAuthSignIn} className="w-full">
       {children}
     </Button>
   );
