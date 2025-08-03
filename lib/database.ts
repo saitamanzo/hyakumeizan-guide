@@ -1,4 +1,5 @@
-import { supabase } from './supabase';
+import { createClient } from '@/lib/supabase/client';
+const supabase = createClient();
 import { Mountain, Route, User, Climb, Review, MountainWithRoutes, UserWithClimbs } from '../types/database';
 
 // Mountains
