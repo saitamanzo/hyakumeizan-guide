@@ -1,6 +1,8 @@
 'use server';
 
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase/server';
+
+const supabase = createClient();
 import type { MountainWithRoutes } from '@/types/database';
 
 export async function getMountainWithRoutes(mountainId: string): Promise<MountainWithRoutes | null> {

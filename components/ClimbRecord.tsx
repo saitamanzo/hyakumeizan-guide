@@ -8,7 +8,8 @@ import Image from 'next/image';
 import { getUserClimbRecords, saveClimbRecord } from '@/lib/climb-utils';
 import PhotoUpload, { UploadedPhoto } from './PhotoUpload';
 import { uploadPhoto, getClimbPhotos, ClimbPhoto } from '@/lib/photo-utils';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase/client';
+const supabase = createClient();
 
 interface ClimbRecordProps {
   mountainName: string;

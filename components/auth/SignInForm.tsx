@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase/client';
+const supabase = createClient();
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import OAuthSignIn from './OAuthSignIn';
@@ -129,7 +130,10 @@ export default function SignInForm() {
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
           {/* OAuth サインイン */}
           <div className="mb-6">
-            <OAuthSignIn />
+            <OAuthSignIn provider="google">
+              <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512"><path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 126 23.4 172.9 62.3l-66.5 64.6C305.5 114.6 279.8 100 248 100c-73 0-132.3 59.2-132.3 132S175 364 248 364c42.4 0 79.7-20.9 103.4-52.7H248v-85.3h236.1c2.3 12.7 3.9 26.9 3.9 41.8z"></path></svg>
+              Googleでサインイン
+            </OAuthSignIn>
           </div>
 
           <div className="relative">
