@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { SupabaseClient, Session, User } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase/client';
 
 type AuthContextType = {
   supabase: SupabaseClient;
@@ -20,47 +20,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isClient, setIsClient] = useState(false);
   const router = useRouter();
+  const supabase = createClient();
 
   useEffect(() => {
-    // クライアントサイドであることを確認
-    setIsClient(true);
-  }, []);
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
 
-  useEffect(() => {
-    if (!isClient) return;
-
-    console.log('AuthProvider: Subscribing to auth state changes.');
-    setLoading(true);
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('AuthProvider: onAuthStateChange event received.', { 
-          event, 
-          hasSession: !!session,
-          userEmail: session?.user?.email
-        });
-        
-        setSession(session);
-        const currentUser = session?.user ?? null;
-        setUser(currentUser);
-
-        if (currentUser && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
-          console.log('AuthProvider: Ensuring user profile for user:', currentUser.id);
-          await ensureUserProfile(currentUser);
-        }
-        
-        setLoading(false);
-        console.log('AuthProvider: Loading state set to false.');
-      }
-    );
-
-    return () => {
-      console.log('AuthProvider: Unsubscribing from auth state changes.');
-      subscription?.unsubscribe();
-    };
-  }, [isClient]);
+    return () => subscription.unsubscribe();
+  }, [supabase]);
 
   const signOut = async () => {
     console.log('AuthProvider: Signing out...');
@@ -92,6 +65,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
 // ユーザープロファイル確保
 async function ensureUserProfile(user: User) {
+  const supabase = createClient();
   try {
     console.log('ensureUserProfile: 開始 - userID:', user.id);
     
