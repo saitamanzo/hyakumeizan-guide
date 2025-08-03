@@ -1,12 +1,11 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
 import type { MountainWithRoutes } from '@/types/database';
 
 export async function getMountainWithRoutes(mountainId: string): Promise<MountainWithRoutes | null> {
-  const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = await createClient();
+  
   const { data: mountain, error } = await supabase
     .from('mountains')
     .select(`
@@ -25,8 +24,8 @@ export async function getMountainWithRoutes(mountainId: string): Promise<Mountai
 }
 
 export async function getMountainReviews(mountainId: string) {
-  const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = await createClient();
+  
   // まずreviewsテーブルのみで試行
   const { data: reviews, error } = await supabase
     .from('reviews')

@@ -1,12 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-// NOTE: This is a temporary client for seeding data.
-// Do not use this in production.
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { createClient } from '@/lib/supabase/server';
 
 const sampleMountains = [
   {
@@ -198,6 +191,8 @@ const sampleRoutes = [
 
 export async function POST() {
   try {
+    const supabase = await createClient();
+    
     console.log('Inserting sample mountains...');
     const { error: mountainError } = await supabase
       .from('mountains')
