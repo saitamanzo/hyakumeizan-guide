@@ -18,6 +18,13 @@ export const supabase = createClient(
       autoRefreshToken: true,
       detectSessionInUrl: true,
       debug: process.env.NODE_ENV === 'development',
+      // OAuth redirect設定を明示的に指定
+      flowType: 'pkce',
+    },
+    global: {
+      headers: {
+        'X-Site-URL': process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : ''),
+      },
     },
   }
 )

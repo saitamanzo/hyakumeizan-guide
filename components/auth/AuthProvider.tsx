@@ -27,108 +27,51 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   useEffect(() => {
-    // クライアントサイドでのみ認証処理を実行
     if (!isClient) return;
 
-    let mounted = true;
-    let sessionChecked = false;
-    
-    // コールバック成功の検出
-    const checkAuthCallback = () => {
-      if (typeof document !== 'undefined') {
-        const callbackCookie = document.cookie
-          .split(';')
-          .find(c => c.trim().startsWith('auth-callback='));
-        
-        if (callbackCookie && callbackCookie.includes('success')) {
-          // クッキーを削除
-          document.cookie = 'auth-callback=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-          // セッション再取得を強制
-          return true;
-        }
-      }
-      return false;
-    };
-    
-    // 初期セッション取得
-    const getInitialSession = async () => {
-      try {
-        const isCallback = checkAuthCallback();
-        
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          // セッション取得エラーは無視（通常のログアウト状態）
-        }
-        
-        if (mounted) {
-          setSession(session);
-          setUser(session?.user ?? null);
-          
-          if (session?.user) {
-            await ensureUserProfile(session.user);
-          }
-          
-          sessionChecked = true;
-          setLoading(false);
-          
-          // コールバック成功時はページリフレッシュを促す
-          if (isCallback && session?.user) {
-            console.log('Auth callback detected, session updated');
-          }
-        }
-      } catch {
-        // 初期セッション取得例外（通常のエラー）
-        if (mounted) {
-          sessionChecked = true;
-          setLoading(false);
-        }
-      }
-    };
+    console.log('AuthProvider: Subscribing to auth state changes.');
+    setLoading(true);
 
-    // 認証状態変化の監視
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state change:', event, session?.user?.email);
-        if (mounted) {
-          setSession(session);
-          setUser(session?.user ?? null);
-          
-          if (session?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
-            await ensureUserProfile(session.user);
-          }
-          
-          // 認証状態が変わったらすぐにローディングを終了
-          if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
-            setLoading(false);
-          } else if (event === 'INITIAL_SESSION') {
-            // 初期セッション取得時もローディングを終了
-            setLoading(false);
-          }
+        console.log('AuthProvider: onAuthStateChange event received.', { 
+          event, 
+          hasSession: !!session,
+          userEmail: session?.user?.email
+        });
+        
+        setSession(session);
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
+
+        if (currentUser && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
+          console.log('AuthProvider: Ensuring user profile for user:', currentUser.id);
+          await ensureUserProfile(currentUser);
         }
+        
+        setLoading(false);
+        console.log('AuthProvider: Loading state set to false.');
       }
     );
 
-    // 初期セッション取得を実行
-    getInitialSession();
-
-    // フォールバック: 3秒後に強制的にロード完了
-    const fallbackTimeout = setTimeout(() => {
-      if (mounted && !sessionChecked) {
-        console.log('Auth fallback timeout triggered');
-        setLoading(false);
-      }
-    }, 3000);
-
     return () => {
-      mounted = false;
+      console.log('AuthProvider: Unsubscribing from auth state changes.');
       subscription?.unsubscribe();
-      clearTimeout(fallbackTimeout);
     };
   }, [isClient]);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    console.log('AuthProvider: Signing out...');
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error('AuthProvider: Error signing out:', error);
+    } else {
+      console.log('AuthProvider: Sign out successful. Clearing local state.');
+      setSession(null);
+      setUser(null);
+      // 念のためルートにリダイレクト
+      window.location.href = '/';
+    }
   };
 
   const forceStopLoading = () => {
@@ -150,13 +93,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 // ユーザープロファイル確保
 async function ensureUserProfile(user: User) {
   try {
+    console.log('ensureUserProfile: 開始 - userID:', user.id);
+    
     const { error } = await supabase
       .from('users')
       .select('id')
       .eq('id', user.id)
       .single();
 
+    console.log('ensureUserProfile: プロファイル確認結果', { error: error?.code });
+
     if (error && error.code === 'PGRST116') {
+      console.log('ensureUserProfile: プロファイル作成開始');
       // ユーザーが存在しない場合は作成
       const { error: insertError } = await supabase.from('users').insert({
         id: user.id,
@@ -166,10 +114,16 @@ async function ensureUserProfile(user: User) {
       });
       
       if (insertError) {
+        console.error('ensureUserProfile: プロファイル作成エラー:', insertError);
         // プロファイル作成エラー（通常処理継続）
+      } else {
+        console.log('ensureUserProfile: プロファイル作成成功');
       }
+    } else if (!error) {
+      console.log('ensureUserProfile: プロファイル既存');
     }
-  } catch {
+  } catch (err) {
+    console.error('ensureUserProfile: 例外発生:', err);
     // ユーザープロファイルエラー（通常処理継続）
   }
 }

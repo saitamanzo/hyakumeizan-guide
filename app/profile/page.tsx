@@ -39,7 +39,12 @@ export default function ProfilePage() {
   // プロフィール情報を取得
   useEffect(() => {
     const fetchProfile = async () => {
-      if (!user) return;
+      if (!user) {
+        console.log('ProfilePage: ユーザーなし、プロファイル取得スキップ');
+        return;
+      }
+      
+      console.log('ProfilePage: プロファイル取得開始 - userID:', user.id);
       
       try {
         setLoading(true);
@@ -49,21 +54,25 @@ export default function ProfilePage() {
           .eq('id', user.id)
           .single();
         
+        console.log('ProfilePage: プロファイル取得結果', { hasData: !!data, error: error?.code });
+        
         if (error) {
           console.error('プロフィール取得エラー:', error);
-          setError('プロフィール情報の取得に失敗しました');
+          setError('プロフィール情報の取得に失敗しました: ' + error.message);
         } else if (data) {
+          console.log('ProfilePage: プロファイル取得成功');
           setProfile(data);
           setEditForm({
             display_name: data.display_name || '',
             experience_level: data.experience_level || 'beginner'
           });
         } else {
+          console.log('ProfilePage: プロファイルデータなし');
           setError('プロフィールが見つかりません');
         }
       } catch (err) {
         console.error('プロフィール取得例外:', err);
-        setError('プロフィール情報の取得中にエラーが発生しました');
+        setError('プロフィール情報の取得中にエラーが発生しました: ' + (err instanceof Error ? err.message : String(err)));
       } finally {
         setLoading(false);
       }

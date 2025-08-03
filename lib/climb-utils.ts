@@ -89,6 +89,8 @@ export async function saveClimbRecord(
  */
 export async function getUserClimbRecords(userId: string): Promise<ClimbRecordWithMountain[]> {
   try {
+    console.log('getUserClimbRecords: 開始 - userID:', userId);
+    
     const { data, error } = await supabase
       .from('climbs')
       .select(`
@@ -105,6 +107,8 @@ export async function getUserClimbRecords(userId: string): Promise<ClimbRecordWi
       .eq('user_id', userId)
       .order('climb_date', { ascending: false });
 
+    console.log('getUserClimbRecords: Supabase応答', { data: data?.length || 0, error });
+
     if (error) {
       console.error('登山記録取得エラー:', error);
       return [];
@@ -120,12 +124,12 @@ export async function getUserClimbRecords(userId: string): Promise<ClimbRecordWi
         .sort((a: ClimbPhoto, b: ClimbPhoto) => (a.sort_order || 0) - (b.sort_order || 0))
     }));
 
-    console.log('取得した登山記録:', result.length, '件');
+    console.log('getUserClimbRecords: 成功 -', result.length, '件取得');
     console.log('写真付き記録:', result.filter(r => r.photos && r.photos.length > 0).length, '件');
     
     return result;
   } catch (error) {
-    console.error('登山記録取得例外:', error);
+    console.error('getUserClimbRecords: 例外発生:', error);
     return [];
   }
 }

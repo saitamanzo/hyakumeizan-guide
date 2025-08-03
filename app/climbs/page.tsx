@@ -33,13 +33,18 @@ export default function ClimbsPage() {
   const [error, setError] = useState<string | null>(null);
 
   const loadClimbsFromDatabase = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('ClimbsPage: ユーザーなし、記録読み込みスキップ');
+      return;
+    }
 
+    console.log('ClimbsPage: 記録読み込み開始 - userID:', user.id);
     setLoading(true);
     setError(null);
     
     try {
       const records = await getUserClimbRecords(user.id);
+      console.log('ClimbsPage: 記録読み込み成功 -', records.length, '件');
       
       // データベースの形式からUIの形式に変換
       const convertedClimbs: ClimbRecordUI[] = records.map((record, index) => ({
@@ -62,7 +67,7 @@ export default function ClimbsPage() {
       
       setClimbs(convertedClimbs);
     } catch (dbError) {
-      console.error('データベース読み込みエラー:', dbError);
+      console.error('ClimbsPage: データベース読み込みエラー:', dbError);
       setError(`データベースエラー: ${dbError instanceof Error ? dbError.message : 'Unknown error'}`);
     } finally {
       setLoading(false);

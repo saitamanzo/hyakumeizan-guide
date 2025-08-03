@@ -25,10 +25,12 @@ export default function UserAvatar() {
 
   const handleSignOut = async () => {
     try {
+      console.log('UserAvatar: ログアウト開始');
       await signOut();
+      console.log('UserAvatar: ログアウト成功');
       setDropdownOpen(false);
     } catch (error) {
-      console.error('Sign out error:', error);
+      console.error('UserAvatar: ログアウトエラー:', error);
     }
   };
 

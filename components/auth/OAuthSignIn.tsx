@@ -17,20 +17,29 @@ export default function OAuthSignIn({ isSignUp: _isSignUp = false }: OAuthSignIn
       setLoading(provider);
       setError(null);
 
-      // 現在のURLを基にリダイレクトURLを構築
-      const redirectUrl = `${window.location.origin}/auth/callback`;
+      const isProduction = process.env.NODE_ENV === 'production';
       
-      console.log('OAuth sign in starting with redirect URL:', redirectUrl);
+      const options: { redirectTo?: string; queryParams: { access_type: string; prompt: string; } } = {
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        },
+      };
+
+      // 開発環境でのみ redirectTo を指定し、本番環境ではSupabaseダッシュボードの設定に依存させる
+      if (!isProduction) {
+        options.redirectTo = `${window.location.origin}/auth/callback`;
+      }
+      
+      console.log('OAuth sign in starting:', {
+        isProduction,
+        options,
+        envSiteUrl: process.env.NEXT_PUBLIC_SITE_URL
+      });
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
-        options: {
-          redirectTo: redirectUrl,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          },
-        },
+        options,
       });
 
       if (error) {

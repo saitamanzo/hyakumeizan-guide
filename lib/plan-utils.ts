@@ -82,6 +82,8 @@ export async function savePlan(
  */
 export async function getUserPlans(userId: string): Promise<PlanWithMountain[]> {
   try {
+    console.log('getUserPlans: 開始 - userID:', userId);
+    
     const { data, error } = await supabase
       .from('plans')
       .select(`
@@ -90,6 +92,8 @@ export async function getUserPlans(userId: string): Promise<PlanWithMountain[]> 
       `)
       .eq('user_id', userId)
       .order('planned_date', { ascending: true });
+
+    console.log('getUserPlans: Supabase応答', { data: data?.length || 0, error });
 
     if (error) {
       console.error('登山計画取得エラー:', error);
@@ -103,6 +107,7 @@ export async function getUserPlans(userId: string): Promise<PlanWithMountain[]> 
         : plan.mountains?.name || '不明'
     }));
 
+    console.log('getUserPlans: 成功 -', result.length, '件取得');
     return result;
   } catch (error) {
     console.error('登山計画取得例外:', error);

@@ -14,17 +14,22 @@ export default function PlansPage() {
   const [error, setError] = useState<string | null>(null);
 
   const loadPlans = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('PlansPage: ユーザーなし、計画読み込みスキップ');
+      return;
+    }
 
+    console.log('PlansPage: 計画読み込み開始 - userID:', user.id);
     setLoading(true);
     setError(null);
     
     try {
       const userPlans = await getUserPlans(user.id);
+      console.log('PlansPage: 計画読み込み成功 -', userPlans.length, '件');
       setPlans(userPlans);
     } catch (err) {
-      console.error('Error loading plans:', err);
-      setError('登山計画の読み込みに失敗しました');
+      console.error('PlansPage: 計画読み込みエラー:', err);
+      setError('登山計画の読み込みに失敗しました: ' + (err instanceof Error ? err.message : String(err)));
     } finally {
       setLoading(false);
     }
