@@ -28,7 +28,7 @@ export default function AvatarUpload({ onUpload }: AvatarUploadProps) {
       setPreview(URL.createObjectURL(file));
 
       // Supabaseストレージにアップロード
-      const { data, error } = await supabase.storage
+      const { error } = await supabase.storage
         .from('avatars')
         .upload(filePath, file);
 

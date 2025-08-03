@@ -53,7 +53,7 @@ export default function ResetPasswordPage() {
         setUserEmail(sessionData.session.user.email);
       }
 
-      const { data, error } = await supabase.auth.updateUser({
+      const { error } = await supabase.auth.updateUser({
         password: password
       });
 
