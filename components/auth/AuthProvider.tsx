@@ -33,9 +33,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     let mounted = true;
     let sessionChecked = false;
     
+    // コールバック成功の検出
+    const checkAuthCallback = () => {
+      if (typeof document !== 'undefined') {
+        const callbackCookie = document.cookie
+          .split(';')
+          .find(c => c.trim().startsWith('auth-callback='));
+        
+        if (callbackCookie && callbackCookie.includes('success')) {
+          // クッキーを削除
+          document.cookie = 'auth-callback=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+          // セッション再取得を強制
+          return true;
+        }
+      }
+      return false;
+    };
+    
     // 初期セッション取得
     const getInitialSession = async () => {
       try {
+        const isCallback = checkAuthCallback();
+        
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -52,6 +71,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           
           sessionChecked = true;
           setLoading(false);
+          
+          // コールバック成功時はページリフレッシュを促す
+          if (isCallback && session?.user) {
+            console.log('Auth callback detected, session updated');
+          }
         }
       } catch {
         // 初期セッション取得例外（通常のエラー）

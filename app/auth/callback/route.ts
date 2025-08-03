@@ -20,7 +20,14 @@ export async function GET(request: NextRequest) {
   if (code) {
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        auth: {
+          persistSession: false, // サーバーサイドではセッションを永続化しない
+          autoRefreshToken: false,
+          detectSessionInUrl: false,
+        },
+      }
     );
     
     try {
@@ -58,7 +65,7 @@ export async function GET(request: NextRequest) {
           }
         }
         
-        // 成功時のリダイレクト
+        // 成功時のリダイレクト（シンプルにホームページへ）
         const response = NextResponse.redirect(`${requestUrl.origin}/`);
         
         // セッションのリフレッシュを促すためのヘッダーを追加
@@ -66,11 +73,15 @@ export async function GET(request: NextRequest) {
         response.headers.set('Pragma', 'no-cache');
         response.headers.set('Expires', '0');
         
-        // セッション成功を示すクエリパラメータを追加
-        const successUrl = new URL(`${requestUrl.origin}/`);
-        successUrl.searchParams.set('auth', 'success');
+        // クライアントサイドでの認証状態更新を促すクッキーを設定
+        response.cookies.set('auth-callback', 'success', {
+          maxAge: 10, // 10秒で期限切れ
+          httpOnly: false,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+        });
         
-        return NextResponse.redirect(successUrl.toString());
+        return response;
       } else {
         console.error('No session or user data received');
         return NextResponse.redirect(`${requestUrl.origin}/signin?error=no_session`);

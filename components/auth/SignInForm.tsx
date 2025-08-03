@@ -77,8 +77,7 @@ export default function SignInForm() {
 
         if (data.session && data.user) {
           console.log('Email signin successful:', data.user.email);
-          // ログイン成功、認証状態の変更を待つ
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          // ログイン成功後、ホームページにリダイレクト
           router.push('/');
           router.refresh();
         } else {

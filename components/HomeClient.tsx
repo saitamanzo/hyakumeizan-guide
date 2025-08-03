@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { useSearchParams } from 'next/navigation';
 import type { Mountain } from '@/types/database';
 import Dashboard from '@/components/Dashboard';
 import HeroSection from '@/components/HeroSection';
@@ -14,7 +13,6 @@ interface HomeClientProps {
 
 export default function HomeClient({ mountains }: HomeClientProps) {
   const { user, loading, session } = useAuth();
-  const searchParams = useSearchParams();
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
@@ -23,16 +21,17 @@ export default function HomeClient({ mountains }: HomeClientProps) {
   }, []);
 
   useEffect(() => {
-    // OAuth認証成功時の処理
-    if (isClient) {
-      const authSuccess = searchParams.get('auth');
-      if (authSuccess === 'success' && user) {
-        // URLクリーンアップ（オプション）
-        const newUrl = window.location.pathname;
+    // ページがロードされた際に認証状態を確認（特別な処理は不要）
+    if (isClient && user) {
+      // URLクリーンアップ（認証関連のクエリパラメータを削除）
+      const currentParams = new URLSearchParams(window.location.search);
+      if (currentParams.has('auth')) {
+        currentParams.delete('auth');
+        const newUrl = window.location.pathname + (currentParams.toString() ? '?' + currentParams.toString() : '');
         window.history.replaceState({}, '', newUrl);
       }
     }
-  }, [searchParams, user, isClient]);
+  }, [user, isClient]);
 
   // SSRとクライアントの不一致を避けるため、クライアントサイドでのみレンダリング
   if (!isClient) {

@@ -17,10 +17,15 @@ export default function OAuthSignIn({ isSignUp: _isSignUp = false }: OAuthSignIn
       setLoading(provider);
       setError(null);
 
+      // 現在のURLを基にリダイレクトURLを構築
+      const redirectUrl = `${window.location.origin}/auth/callback`;
+      
+      console.log('OAuth sign in starting with redirect URL:', redirectUrl);
+
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: redirectUrl,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
