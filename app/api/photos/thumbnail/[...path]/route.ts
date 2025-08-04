@@ -3,11 +3,12 @@ import { createClient } from '@/lib/supabase/client';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
+  const resolvedParams = await params;
   try {
     const supabase = createClient();
-    const imagePath = params.path.join('/');
+    const imagePath = resolvedParams.path.join('/');
 
     // Supabase Storageから画像を取得
     const { data, error } = await supabase.storage
