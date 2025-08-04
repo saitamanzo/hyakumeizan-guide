@@ -2,11 +2,9 @@
 
 import React, { useState, useRef, useCallback } from 'react';
 import Image from 'next/image';
-import { uploadPhoto, PhotoUploadResult } from '@/lib/photo-utils';
 
 interface PhotoUploadProps {
   climbId?: string;
-  userId: string;
   onPhotosChange: (photos: UploadedPhoto[]) => void;
   initialPhotos?: UploadedPhoto[];
   maxPhotos?: number;
@@ -26,7 +24,6 @@ export interface UploadedPhoto {
 
 export default function PhotoUpload({ 
   climbId, 
-  userId, 
   onPhotosChange, 
   initialPhotos = [], 
   maxPhotos = 10 
@@ -132,12 +129,18 @@ export default function PhotoUpload({
       if (!photo.file) return null;
 
       try {
-        const result: PhotoUploadResult = await uploadPhoto(
-          photo.file,
-          climbId,
-          userId,
-          photo.caption
-        );
+        // サーバーサイドAPIを使用してアップロード
+        const formData = new FormData();
+        formData.append('file', photo.file);
+        formData.append('climbId', climbId);
+        formData.append('caption', photo.caption || '');
+
+        const response = await fetch('/api/upload-photo', {
+          method: 'POST',
+          body: formData
+        });
+
+        const result = await response.json();
 
         const photoIndex = photos.findIndex(p => p === photo);
         if (photoIndex === -1) return null;
@@ -147,11 +150,11 @@ export default function PhotoUpload({
             index: photoIndex,
             update: {
               ...photo,
-              id: result.photoId,
+              id: result.data.id,
               uploading: false,
               uploaded: true,
-              originalUrl: result.originalUrl,
-              thumbnailUrl: result.thumbnailUrl,
+              originalUrl: result.data.url,
+              thumbnailUrl: result.data.url, // サムネイルとオリジナルが同じ場合
               error: undefined,
             }
           };
@@ -167,6 +170,7 @@ export default function PhotoUpload({
         }
       } catch (error) {
         const photoIndex = photos.findIndex(p => p === photo);
+        console.error('写真アップロードエラー:', error);
         return {
           index: photoIndex,
           update: {
@@ -189,10 +193,15 @@ export default function PhotoUpload({
       });
       
       updatePhotos(newPhotos);
+      
+      // 成功したアップロード数をログ出力
+      const successCount = results.filter(r => r?.update.uploaded).length;
+      console.log(`✅ 写真アップロード完了: ${successCount}/${unuploadedPhotos.length}枚`);
+      
     } catch (error) {
       console.error('写真アップロード中にエラーが発生:', error);
     }
-  }, [photos, climbId, userId, updatePhotos]);
+  }, [photos, climbId, updatePhotos]);
 
   const movePhoto = useCallback((fromIndex: number, toIndex: number) => {
     const newPhotos = [...photos];

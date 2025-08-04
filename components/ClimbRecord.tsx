@@ -7,7 +7,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { getUserClimbRecords, saveClimbRecord, deleteClimbRecord } from '@/lib/climb-utils';
 import PhotoUpload, { UploadedPhoto } from './PhotoUpload';
-import { uploadPhoto, getClimbPhotos, ClimbPhoto } from '@/lib/photo-utils';
+import { getClimbPhotos, ClimbPhoto } from '@/lib/photo-utils';
 import { createClient } from '@/lib/supabase/client';
 import LikeButton from './LikeButton';
 import { SocialShareButtonsCompact } from './SocialShareButtons';
@@ -156,14 +156,19 @@ export default function ClimbRecord({ mountainName, mountainId }: ClimbRecordPro
         // 写真がある場合は、保存された記録IDに関連付けてアップロード
         if (photos.length > 0 && result.id) {
           for (const photo of photos) {
-            if (photo.file) {
+            if (photo.file && !photo.uploaded) {
               try {
-                const uploadResult = await uploadPhoto(
-                  photo.file,
-                  result.id,
-                  user.id,
-                  photo.caption || ''
-                );
+                const formData = new FormData();
+                formData.append('file', photo.file);
+                formData.append('climbId', result.id);
+                formData.append('caption', photo.caption || '');
+
+                const response = await fetch('/api/upload-photo', {
+                  method: 'POST',
+                  body: formData
+                });
+
+                const uploadResult = await response.json();
                 
                 if (!uploadResult.success) {
                   console.error('写真アップロード失敗:', uploadResult.error);
@@ -569,7 +574,6 @@ export default function ClimbRecord({ mountainName, mountainId }: ClimbRecordPro
               写真
             </label>
             <PhotoUpload 
-              userId={user?.id || ''}
               initialPhotos={photos}
               onPhotosChange={handlePhotosChange}
               maxPhotos={10}
