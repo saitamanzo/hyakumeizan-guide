@@ -215,6 +215,39 @@ export async function updatePlanPublicStatus(
 }
 
 /**
+ * 登山計画を更新
+ */
+export async function updatePlan(
+  planId: string,
+  data: {
+    title?: string;
+    description?: string;
+    planned_date?: string;
+    estimated_duration?: number;
+    difficulty_level?: 'easy' | 'moderate' | 'hard';
+    route_plan?: string;
+    equipment_list?: string[];
+    notes?: string;
+    is_public?: boolean;
+  }
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { error } = await supabase
+      .from('plans')
+      .update(data)
+      .eq('id', planId);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: String(error) };
+  }
+}
+
+/**
  * 登山計画を削除
  */
 export async function deletePlan(planId: string): Promise<boolean> {

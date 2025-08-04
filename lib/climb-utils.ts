@@ -303,6 +303,38 @@ export async function updateClimbRecordPublicStatus(
 }
 
 /**
+ * 登山記録を更新
+ */
+export async function updateClimbRecord(
+  recordId: string,
+  data: {
+    climb_date?: string;
+    route_id?: string;
+    start_time?: string;
+    end_time?: string;
+    weather_conditions?: string;
+    notes?: string;
+    difficulty_rating?: number;
+    is_public?: boolean;
+  }
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { error } = await supabase
+      .from('climbs')
+      .update(data)
+      .eq('id', recordId);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: String(error) };
+  }
+}
+
+/**
  * 登山記録を削除
  */
 export async function deleteClimbRecord(recordId: string): Promise<boolean> {

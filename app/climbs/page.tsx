@@ -5,8 +5,9 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { getUserClimbRecords, deleteClimbRecord, updateClimbRecordPublicStatus } from '@/lib/climb-utils';
+import { getUserClimbRecords, deleteClimbRecord, updateClimbRecordPublicStatus, ClimbRecord } from '@/lib/climb-utils';
 import { SocialShareButtonsCompact } from '@/components/SocialShareButtons';
+import EditClimbRecord from '@/components/EditClimbRecord';
 
 // UI表示用の型定義
 interface ClimbRecordUI {
@@ -42,6 +43,7 @@ export default function ClimbsPage() {
   const [climbs, setClimbs] = useState<ClimbRecordUI[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [editingClimb, setEditingClimb] = useState<ClimbRecordUI | null>(null);
 
   const loadClimbsFromDatabase = useCallback(async () => {
     if (!user) {
@@ -141,6 +143,43 @@ export default function ClimbsPage() {
       console.error('公開設定の更新に失敗しました:', err);
       alert('公開設定の更新に失敗しました');
     }
+  };
+
+  const handleEdit = (climb: ClimbRecordUI) => {
+    setEditingClimb(climb);
+  };
+
+  const handleUpdateClimb = (updatedRecord: ClimbRecord) => {
+    // データベース形式からUI形式に変換
+    const updatedClimb: ClimbRecordUI = {
+      id: updatedRecord.id!,
+      mountainId: updatedRecord.mountain_id,
+      mountainName: editingClimb?.mountainName || '不明',
+      date: updatedRecord.climb_date || '',
+      route: '一般ルート',
+      duration: '',
+      difficulty: 'easy',
+      weather: updatedRecord.weather_conditions || '',
+      companions: '',
+      notes: updatedRecord.notes || '',
+      rating: updatedRecord.difficulty_rating || 0,
+      photos: editingClimb?.photos || [],
+      createdAt: updatedRecord.created_at || '',
+      isPublic: updatedRecord.is_public || false,
+      publishedAt: updatedRecord.published_at
+    };
+
+    // リストを更新
+    setClimbs(climbs.map(climb => 
+      climb.id === updatedClimb.id ? updatedClimb : climb
+    ));
+    
+    // 編集モードを終了
+    setEditingClimb(null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingClimb(null);
   };
 
   if (authLoading || loading) {
@@ -245,6 +284,16 @@ export default function ClimbsPage() {
                       }}
                       ownerId={user?.id || ''}
                     />
+                    
+                    <button
+                      onClick={() => handleEdit(climb)}
+                      className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
+                      title="編集"
+                    >
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                      </svg>
+                    </button>
                     
                     <button
                       onClick={() => handleTogglePublic(climb.id, climb.isPublic)}
@@ -377,6 +426,27 @@ export default function ClimbsPage() {
               </div>
             ))}
           </div>
+        )}
+        
+        {/* 編集モーダル */}
+        {editingClimb && (
+          <EditClimbRecord
+            record={{
+              id: editingClimb.id,
+              user_id: user?.id || '',
+              mountain_id: editingClimb.mountainId,
+              climb_date: editingClimb.date,
+              weather_conditions: editingClimb.weather,
+              notes: editingClimb.notes,
+              difficulty_rating: editingClimb.rating,
+              is_public: editingClimb.isPublic,
+              mountain_name: editingClimb.mountainName,
+              created_at: editingClimb.createdAt,
+              published_at: editingClimb.publishedAt
+            }}
+            onUpdate={handleUpdateClimb}
+            onCancel={handleCancelEdit}
+          />
         )}
       </div>
     </div>

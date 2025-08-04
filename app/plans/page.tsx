@@ -4,8 +4,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { getUserPlans, deletePlan, updatePlanPublicStatus, PlanWithMountain } from '@/lib/plan-utils';
+import { getUserPlans, deletePlan, updatePlanPublicStatus, PlanWithMountain, Plan } from '@/lib/plan-utils';
 import { SocialShareButtonsCompact } from '@/components/SocialShareButtons';
+import EditPlan from '@/components/EditPlan';
 
 export default function PlansPage() {
   const { user, loading: authLoading } = useAuth();
@@ -13,6 +14,7 @@ export default function PlansPage() {
   const [plans, setPlans] = useState<PlanWithMountain[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [editingPlan, setEditingPlan] = useState<PlanWithMountain | null>(null);
 
   const loadPlans = useCallback(async () => {
     if (!user) {
@@ -84,6 +86,24 @@ export default function PlansPage() {
       console.error('Error updating plan public status:', err);
       setError('公開設定の更新に失敗しました');
     }
+  };
+
+  const handleEdit = (plan: PlanWithMountain) => {
+    setEditingPlan(plan);
+  };
+
+  const handleUpdatePlan = (updatedPlan: Plan) => {
+    // リストを更新
+    setPlans(plans.map(plan => 
+      plan.id === updatedPlan.id ? { ...plan, ...updatedPlan } : plan
+    ));
+    
+    // 編集モードを終了
+    setEditingPlan(null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingPlan(null);
   };
 
   if (error) {
@@ -199,6 +219,16 @@ export default function PlansPage() {
                     />
                     
                     <button
+                      onClick={() => handleEdit(plan)}
+                      className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
+                      title="編集"
+                    >
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                      </svg>
+                    </button>
+                    
+                    <button
                       onClick={() => handleTogglePublic(plan.id!, plan.is_public || false)}
                       className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
                         plan.is_public
@@ -308,6 +338,15 @@ export default function PlansPage() {
               </div>
             ))}
           </div>
+        )}
+        
+        {/* 編集モーダル */}
+        {editingPlan && (
+          <EditPlan
+            plan={editingPlan}
+            onUpdate={handleUpdatePlan}
+            onCancel={handleCancelEdit}
+          />
         )}
       </div>
     </div>
