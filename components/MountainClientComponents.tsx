@@ -61,15 +61,15 @@ export function WeatherMapIntegration({ latitude, longitude, mountainName, eleva
     lat: latitude,
     lng: longitude,
     name: mountainName,
-    elevation: elevation as number | undefined
+    elevation: undefined // 常に座標から標高を取得するため、undefinedに設定
   });
 
-  const handleLocationChange = (lat: number, lng: number, locationName?: string, elevation?: number) => {
+  const handleLocationChange = (lat: number, lng: number, locationName?: string) => {
     setWeatherLocation({
       lat,
       lng,
       name: locationName || `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
-      elevation: elevation // 推定標高を使用
+      elevation: undefined // 標高は座標から取得するため、undefinedに設定
     });
   };
 
@@ -89,7 +89,7 @@ export function WeatherMapIntegration({ latitude, longitude, mountainName, eleva
               📍 選択地点: {weatherLocation.name}
             </p>
             <button 
-              onClick={() => setWeatherLocation({ lat: latitude, lng: longitude, name: mountainName, elevation: elevation })}
+              onClick={() => setWeatherLocation({ lat: latitude, lng: longitude, name: mountainName, elevation: undefined })}
               className="text-xs text-blue-500 hover:text-blue-700 underline mt-1"
             >
               元の山の天気に戻す

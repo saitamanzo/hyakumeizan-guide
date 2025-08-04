@@ -11,9 +11,14 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 # Weather API Configuration
 NEXT_PUBLIC_USE_REAL_WEATHER_API=false  # true: 実際のAPI, false: デモデータ
 NEXT_PUBLIC_OPENWEATHER_API_KEY=your-openweather-api-key
+
+# Google Maps API Configuration (標高データ取得用)
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your-google-maps-api-key
 ```
 
-## 天気API の設定（オプション）
+## API設定（オプション）
+
+### 天気API の設定
 
 実際の天気データを使用する場合：
 
@@ -26,9 +31,24 @@ NEXT_PUBLIC_OPENWEATHER_API_KEY=your-openweather-api-key
    NEXT_PUBLIC_OPENWEATHER_API_KEY=your-actual-api-key
    ```
 
-4. 開発サーバーを再起動
+**注意**: 無効なAPIキーの場合、自動的にデモデータにフォールバックします。
 
-**注意**: 無効なAPIキーの場合、自動的にデモデータにフォールバックします。## 機能
+### Google Maps API の設定（標高データ取得用）
+
+正確な標高データを取得する場合：
+
+1. [Google Cloud Console](https://console.cloud.google.com/) でプロジェクトを作成
+2. Elevation API を有効化
+3. APIキーを作成し、必要に応じて制限を設定
+4. `.env.local` で設定：
+
+   ```bash
+   NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your-google-maps-api-key
+   ```
+
+**料金**: Google Elevation API は月間200ドル分（約40,000リクエスト）まで無料。それ以降は1,000リクエストあたり約$5。
+
+**注意**: APIキーが設定されていない場合、日本の地形を考慮した推定値を使用します。## 機能
 
 - 山の一覧表示と詳細情報
 - 登山ルート情報

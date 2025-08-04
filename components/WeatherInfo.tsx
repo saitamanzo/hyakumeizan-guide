@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import WeatherApiStatus from './WeatherApiStatus';
+import { getElevation, type ElevationResult } from '@/lib/elevation';
 
 interface WeatherData {
   main: {
@@ -72,55 +73,45 @@ export default function WeatherInfo({ latitude, longitude, mountainName, elevati
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'current' | 'forecast'>('current');
-  const [estimatedElevation, setEstimatedElevation] = useState<number | null>(null);
+  const [elevationData, setElevationData] = useState<ElevationResult | null>(null);
+  const [elevationLoading, setElevationLoading] = useState(false);
 
   useEffect(() => {
-    // 標高の推定（簡易計算）
-    const estimateElevation = () => {
-      if (elevation !== undefined) {
-        setEstimatedElevation(elevation);
-        return;
-      }
-      
-      // 簡易標高推定（日本の地形を考慮した大まかな計算）
-      
-      // 簡易標高推定（日本の地形を考慮した大まかな計算）
-      // より精密にはGoogle Elevation APIやOpenTopography APIを使用
-      const lat = latitude;
-      const lng = longitude;
-      
-      // 日本の主要山脈エリアの判定
-      let estimatedAlt = 50; // デフォルト標高
-      
-      // 富士山周辺（高標高エリア）
-      if (lat >= 35.0 && lat <= 35.8 && lng >= 138.5 && lng <= 139.0) {
-        estimatedAlt = 1000 + Math.abs(Math.sin(lat * 10) * Math.cos(lng * 10)) * 2000;
-      }
-      // 日本アルプス（中部山岳）
-      else if (lat >= 35.5 && lat <= 37.0 && lng >= 137.0 && lng <= 138.5) {
-        estimatedAlt = 800 + Math.abs(Math.sin(lat * 8) * Math.cos(lng * 8)) * 1800;
-      }
-      // 関東山地
-      else if (lat >= 35.5 && lat <= 36.5 && lng >= 138.5 && lng <= 139.5) {
-        estimatedAlt = 300 + Math.abs(Math.sin(lat * 12) * Math.cos(lng * 12)) * 1200;
-      }
-      // 東北山地
-      else if (lat >= 37.0 && lat <= 41.0 && lng >= 140.0 && lng <= 141.5) {
-        estimatedAlt = 200 + Math.abs(Math.sin(lat * 6) * Math.cos(lng * 6)) * 1000;
-      }
-      // 九州山地
-      else if (lat >= 31.0 && lat <= 34.0 && lng >= 130.0 && lng <= 132.0) {
-        estimatedAlt = 200 + Math.abs(Math.sin(lat * 15) * Math.cos(lng * 15)) * 1400;
-      }
-      // その他の内陸部
-      else if (lng >= 136.0 && lng <= 141.0) {
-        estimatedAlt = 100 + Math.abs(Math.sin(lat * 20) * Math.cos(lng * 20)) * 800;
-      }
-      
-      setEstimatedElevation(Math.round(estimatedAlt));
-    };
+    console.log('🏔️ WeatherInfo useEffect triggered for:', { latitude, longitude, elevation, mountainName });
     
-    estimateElevation();
+    // 標高データの取得（常にGoogle API/推定値を使用、山の標高データは使わない）
+    const fetchElevation = async () => {
+      console.log('📡 Starting elevation fetch from coordinates...');
+      setElevationLoading(true);
+      try {
+        // 山の標高データは渡さず、常に座標からAPIで取得
+        const result = await getElevation(latitude, longitude);
+        console.log('✅ Elevation fetch completed:', result);
+        setElevationData(result);
+      } catch (error) {
+        console.error('❌ Elevation fetch error:', error);
+        
+        // エラーの詳細情報をログ出力
+        if (error instanceof Error) {
+          console.error('Error details:', {
+            name: error.name,
+            message: error.message,
+            stack: error.stack?.substring(0, 200) + '...'
+          });
+        }
+        
+        // エラーの場合でも簡易推定を表示
+        setElevationData({
+          elevation: 500, // デフォルト値
+          source: 'estimated',
+          accuracy: 'low'
+        });
+      } finally {
+        setElevationLoading(false);
+      }
+    };
+
+    fetchElevation();
     
     const fetchWeather = async () => {
       try {
@@ -461,9 +452,14 @@ export default function WeatherInfo({ latitude, longitude, mountainName, elevati
             <path d="M5.5 16a3.5 3.5 0 01-.369-6.98 4 4 0 117.753-1.977A4.5 4.5 0 1113.5 16h-8z" />
           </svg>
           天気情報
-          {estimatedElevation !== null && (
+          {elevationData && (
             <span className="ml-2 text-sm font-normal text-gray-600">
-              (標高 {estimatedElevation.toLocaleString()}m)
+              (標高 {elevationData.elevation.toLocaleString()}m)
+            </span>
+          )}
+          {elevationLoading && (
+            <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+              標高取得中...
             </span>
           )}
         </h3>
@@ -490,6 +486,42 @@ export default function WeatherInfo({ latitude, longitude, mountainName, elevati
           </button>
         </div>
       </div>
+
+      {/* 標高情報表示 */}
+      {elevationData && (
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center text-sm text-blue-800">
+              <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+              </svg>
+              <span className="font-medium">標高: {elevationData.elevation.toLocaleString()}m</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              {elevationData.source === 'google' && (
+                <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
+                  Google API
+                </span>
+              )}
+              {elevationData.source === 'estimated' && (
+                <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">
+                  推定値
+                </span>
+              )}
+              {elevationData.source === 'cache' && (
+                <span className="px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded-full">
+                  キャッシュ
+                </span>
+              )}
+            </div>
+          </div>
+          {elevationData.source === 'estimated' && (
+            <p className="text-xs text-blue-600 mt-1">
+              ⚠️ これは推定値です。より正確な標高データを取得するにはGoogle Maps APIキーを設定してください。
+            </p>
+          )}
+        </div>
+      )}
 
       {/* 現在の天気タブ */}
       {activeTab === 'current' && (
@@ -557,8 +589,8 @@ export default function WeatherInfo({ latitude, longitude, mountainName, elevati
                 <p className="text-sm text-yellow-800 font-medium mb-1">登山時の注意</p>
                 <ul className="text-xs text-yellow-700 space-y-1">
                   <li>• 山頂付近は平地より気温が低くなります</li>
-                  {estimatedElevation !== null && estimatedElevation > 1000 && (
-                    <li>• 標高{estimatedElevation.toLocaleString()}mでは平地より約{Math.round((estimatedElevation / 100) * 0.6)}°C低くなります</li>
+                  {elevationData && elevationData.elevation > 1000 && (
+                    <li>• 標高{elevationData.elevation.toLocaleString()}mでは平地より約{Math.round((elevationData.elevation / 100) * 0.6)}°C低くなります</li>
                   )}
                   <li>• 天候は急変する可能性があります</li>
                   <li>• 風速が強い場合は十分注意してください</li>
