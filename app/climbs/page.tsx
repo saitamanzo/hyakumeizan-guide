@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { getUserClimbRecords, deleteClimbRecord, updateClimbRecordPublicStatus } from '@/lib/climb-utils';
+import { SocialShareButtonsCompact } from '@/components/SocialShareButtons';
 
 // UI表示用の型定義
 interface ClimbRecordUI {
@@ -188,6 +189,24 @@ export default function ClimbsPage() {
                     </p>
                   </div>
                   <div className="flex items-center space-x-2">
+                    {/* ソーシャルシェアボタン */}
+                    <SocialShareButtonsCompact
+                      type="climb"
+                      data={{
+                        id: climb.id,
+                        mountain_id: climb.mountainId,
+                        mountain_name: climb.mountainName,
+                        climb_date: climb.date,
+                        difficulty_rating: climb.difficulty === 'easy' ? 1 : climb.difficulty === 'moderate' ? 3 : 5,
+                        weather_conditions: climb.weather,
+                        notes: climb.notes,
+                        user_id: user?.id || '',
+                        is_public: climb.isPublic,
+                        created_at: climb.createdAt
+                      }}
+                      ownerId={user?.id || ''}
+                    />
+                    
                     <button
                       onClick={() => handleTogglePublic(climb.id, climb.isPublic)}
                       className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${

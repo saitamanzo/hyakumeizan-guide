@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { getUserPlans, deletePlan, updatePlanPublicStatus, PlanWithMountain } from '@/lib/plan-utils';
+import { SocialShareButtonsCompact } from '@/components/SocialShareButtons';
 
 export default function PlansPage() {
   const { user, loading: authLoading } = useAuth();
@@ -190,6 +191,13 @@ export default function PlansPage() {
                     </p>
                   </div>
                   <div className="flex items-center space-x-2">
+                    {/* ソーシャルシェアボタン */}
+                    <SocialShareButtonsCompact
+                      type="plan"
+                      data={plan}
+                      ownerId={user?.id || ''}
+                    />
+                    
                     <button
                       onClick={() => handleTogglePublic(plan.id!, plan.is_public || false)}
                       className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getPublicClimbRecords, ClimbRecordWithMountain } from '@/lib/climb-utils';
 import LikeButton from '@/components/LikeButton';
+import { SocialShareButtonsCompact } from '@/components/SocialShareButtons';
 import { getThumbnailUrl, getOriginalUrl } from '@/lib/photo-utils';
 import Image from 'next/image';
 
@@ -226,6 +227,13 @@ export default function PublicClimbsPage() {
                         contentOwnerId={climb.user?.id}
                         size="medium"
                         variant="outline"
+                      />
+                      
+                      {/* ソーシャルシェアボタン（作成者のみ） */}
+                      <SocialShareButtonsCompact
+                        type="climb"
+                        data={climb}
+                        ownerId={climb.user?.id || ''}
                       />
                     </div>
                     <Link

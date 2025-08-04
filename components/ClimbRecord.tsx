@@ -10,6 +10,7 @@ import PhotoUpload, { UploadedPhoto } from './PhotoUpload';
 import { uploadPhoto, getClimbPhotos, ClimbPhoto } from '@/lib/photo-utils';
 import { createClient } from '@/lib/supabase/client';
 import LikeButton from './LikeButton';
+import { SocialShareButtonsCompact } from './SocialShareButtons';
 const supabase = createClient();
 
 interface ClimbRecordProps {
@@ -372,6 +373,27 @@ export default function ClimbRecord({ mountainName, mountainId }: ClimbRecordPro
                                 contentOwnerId={savedRecord.userId}
                                 size="small"
                                 variant="outline"
+                              />
+                            )}
+                            
+                            {/* ソーシャルシェアボタン（作成者のみ） */}
+                            {user && savedRecord.userId === user.id && (
+                              <SocialShareButtonsCompact
+                                type="climb"
+                                data={{
+                                  id: savedRecord.id,
+                                  mountain_id: savedRecord.mountainId,
+                                  mountain_name: savedRecord.mountainName,
+                                  climb_date: savedRecord.date,
+                                  difficulty_rating: savedRecord.difficulty === 'easy' ? 1 : savedRecord.difficulty === 'moderate' ? 3 : 5,
+                                  weather_conditions: savedRecord.weather,
+                                  notes: savedRecord.notes,
+                                  user_id: savedRecord.userId,
+                                  is_public: true,
+                                  created_at: savedRecord.createdAt,
+                                  photos: savedRecord.photos
+                                }}
+                                ownerId={savedRecord.userId}
                               />
                             )}
                           </div>

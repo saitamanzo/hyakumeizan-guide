@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { savePlan, getUserPlans, deletePlan, PlanWithMountain } from '@/lib/plan-utils';
 import LikeButton from './LikeButton';
+import { SocialShareButtonsCompact } from './SocialShareButtons';
 
 interface ClimbingPlanProps {
   mountainName: string;
@@ -226,21 +227,32 @@ export default function ClimbingPlan({ mountainName, mountainId, difficulty, ele
                       </div>
                       
                       {/* アクションボタンエリア */}
-                      <div className="flex items-center space-x-2">
-                        {/* いいねボタン（自分の計画以外に表示） */}
-                        {user && savedPlan.user_id !== user.id && (
-                          <LikeButton
-                            type="plan"
-                            contentId={savedPlan.id || ''}
-                            contentOwnerId={savedPlan.user_id}
-                            size="small"
-                            variant="outline"
-                          />
-                        )}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          {/* いいねボタン（自分の計画以外に表示） */}
+                          {user && savedPlan.user_id !== user.id && (
+                            <LikeButton
+                              type="plan"
+                              contentId={savedPlan.id || ''}
+                              contentOwnerId={savedPlan.user_id}
+                              size="small"
+                              variant="outline"
+                            />
+                          )}
+                          
+                          {/* ソーシャルシェアボタン（作成者のみ） */}
+                          {user && savedPlan.user_id === user.id && (
+                            <SocialShareButtonsCompact
+                              type="plan"
+                              data={savedPlan}
+                              ownerId={savedPlan.user_id}
+                            />
+                          )}
+                        </div>
                         
                         {/* 編集・削除ボタン（作成者のみ） */}
                         {user && savedPlan.user_id === user.id && (
-                          <>
+                          <div className="flex items-center space-x-2">
                             <button
                               onClick={() => handleEditPlan(savedPlan)}
                               className="text-sm text-blue-600 hover:text-blue-800 font-medium"
@@ -253,7 +265,7 @@ export default function ClimbingPlan({ mountainName, mountainId, difficulty, ele
                             >
                               削除
                             </button>
-                          </>
+                          </div>
                         )}
                       </div>
                     </div>
