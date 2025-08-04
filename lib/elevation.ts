@@ -42,10 +42,20 @@ async function getElevationFromGoogle(lat: number, lng: number): Promise<number 
     );
 
     console.log('📡 API Route Response status:', response.status);
+    console.log('📡 API Route Response headers:', Object.fromEntries(response.headers.entries()));
 
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorData = await response.json().catch(() => ({ error: 'Failed to parse error response' }));
       console.error('❌ API Route Error response:', errorData);
+      
+      // 詳細なエラー情報をログに出力
+      console.error('❌ Detailed error info:', {
+        status: response.status,
+        statusText: response.statusText,
+        url: response.url,
+        errorData
+      });
+      
       return null;
     }
 
@@ -63,7 +73,11 @@ async function getElevationFromGoogle(lat: number, lng: number): Promise<number 
   } catch (error) {
     console.error('❌ Elevation API Network Error:', error);
     if (error instanceof Error) {
-      console.error('Error details:', error.message);
+      console.error('Error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack?.substring(0, 300) + '...'
+      });
       
       // ネットワークエラーの詳細な分類
       if (error.message.includes('Failed to fetch')) {
