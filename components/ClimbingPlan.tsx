@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './auth/AuthProvider';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { savePlan } from '@/lib/plan-utils';
+import { savePlan, getUserPlans, deletePlan, PlanWithMountain } from '@/lib/plan-utils';
+import LikeButton from './LikeButton';
 
 interface ClimbingPlanProps {
   mountainName: string;
@@ -26,6 +27,7 @@ export default function ClimbingPlan({ mountainName, mountainId, difficulty, ele
   const { user, loading } = useAuth();
   const router = useRouter();
   const [showPlanForm, setShowPlanForm] = useState(false);
+  const [savedPlans, setSavedPlans] = useState<PlanWithMountain[]>([]);
   const [plan, setPlan] = useState<PlanData>({
     date: '',
     startTime: '06:00',
@@ -40,6 +42,28 @@ export default function ClimbingPlan({ mountainName, mountainId, difficulty, ele
     '救急用品', '非常食', '水筒', '防寒着', 'サングラス',
     'トレッキングポール', 'ヘルメット', 'ロープ', 'ハーネス'
   ];
+
+  // 保存済み計画を読み込む
+  const loadSavedPlans = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      const plans = await getUserPlans(user.id);
+      // 指定した山の計画のみフィルタリング
+      const mountainPlans = plans.filter(plan => plan.mountain_id === mountainId);
+      setSavedPlans(mountainPlans);
+    } catch (error) {
+      console.error('計画の読み込みエラー:', error);
+      setSavedPlans([]);
+    }
+  }, [user, mountainId]);
+
+  // ユーザーがログインしたときに保存済み計画を読み込む
+  useEffect(() => {
+    if (user && !loading) {
+      loadSavedPlans();
+    }
+  }, [user, loading, loadSavedPlans]);
 
   const getRecommendedEquipment = () => {
     const basic = ['登山靴', 'ザック', '雨具', 'ヘッドライト', '地図・コンパス', '救急用品', '非常食', '水筒'];
@@ -105,11 +129,49 @@ export default function ClimbingPlan({ mountainName, mountainId, difficulty, ele
       await savePlan(user.id, mountainId, planOptions);
       alert('登山計画を保存しました！');
       setShowPlanForm(false);
+      // 保存後に計画一覧を再読み込み
+      await loadSavedPlans();
     } catch (error) {
       console.error('登山計画の保存に失敗しました:', error);
       alert('登山計画の保存に失敗しました。もう一度お試しください。');
     }
   };
+
+  // 計画の編集ハンドラー
+  const handleEditPlan = useCallback((savedPlan: PlanWithMountain) => {
+    // フォームに既存データを設定
+    setPlan({
+      date: savedPlan.planned_date || '',
+      startTime: '06:00', // デフォルト値
+      estimatedDuration: savedPlan.estimated_duration ? Math.round(savedPlan.estimated_duration / 60).toString() : '6',
+      route: savedPlan.route_plan || '一般ルート',
+      equipment: savedPlan.equipment_list || [],
+      notes: savedPlan.notes || ''
+    });
+    
+    setShowPlanForm(true);
+  }, []);
+
+  // 計画の削除ハンドラー
+  const handleDeletePlan = useCallback(async (planId: string) => {
+    if (!window.confirm('この登山計画を削除しますか？この操作は取り消せません。')) {
+      return;
+    }
+
+    try {
+      const success = await deletePlan(planId);
+      if (success) {
+        alert('登山計画を削除しました');
+        // 計画一覧を再読み込み
+        await loadSavedPlans();
+      } else {
+        alert('登山計画の削除に失敗しました');
+      }
+    } catch (error) {
+      console.error('削除処理中のエラー:', error);
+      alert('削除中にエラーが発生しました');
+    }
+  }, [loadSavedPlans]);
 
   const estimatedCalories = Math.round(elevation * 0.8 + parseInt(plan.estimatedDuration) * 400);
 
@@ -145,6 +207,84 @@ export default function ClimbingPlan({ mountainName, mountainId, difficulty, ele
               </div>
             </div>
           )}
+          
+          {/* 保存済み計画の表示 */}
+          {user && savedPlans.length > 0 && (
+            <div className="mb-6">
+              <h4 className="text-md font-medium text-gray-900 mb-3">過去の登山計画</h4>
+              <div className="space-y-4">
+                {savedPlans.map((savedPlan) => (
+                  <div key={savedPlan.id} className="bg-gray-50 rounded-lg p-4 border">
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex-1">
+                        <h5 className="font-medium text-gray-900">{savedPlan.title}</h5>
+                        {savedPlan.planned_date && (
+                          <p className="text-sm text-gray-600">
+                            予定日: {new Date(savedPlan.planned_date).toLocaleDateString('ja-JP')}
+                          </p>
+                        )}
+                      </div>
+                      
+                      {/* アクションボタンエリア */}
+                      <div className="flex items-center space-x-2">
+                        {/* いいねボタン（自分の計画以外に表示） */}
+                        {user && savedPlan.user_id !== user.id && (
+                          <LikeButton
+                            type="plan"
+                            contentId={savedPlan.id || ''}
+                            contentOwnerId={savedPlan.user_id}
+                            size="small"
+                            variant="outline"
+                          />
+                        )}
+                        
+                        {/* 編集・削除ボタン（作成者のみ） */}
+                        {user && savedPlan.user_id === user.id && (
+                          <>
+                            <button
+                              onClick={() => handleEditPlan(savedPlan)}
+                              className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                            >
+                              編集
+                            </button>
+                            <button
+                              onClick={() => handleDeletePlan(savedPlan.id || '')}
+                              className="text-sm text-red-600 hover:text-red-800 font-medium"
+                            >
+                              削除
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm text-gray-600 mb-2">
+                      {savedPlan.estimated_duration && (
+                        <div>
+                          <span className="font-medium">予想時間:</span> {Math.round(savedPlan.estimated_duration / 60)}時間
+                        </div>
+                      )}
+                      <div>
+                        <span className="font-medium">ルート:</span> {savedPlan.route_plan || '一般ルート'}
+                      </div>
+                      {savedPlan.equipment_list && savedPlan.equipment_list.length > 0 && (
+                        <div>
+                          <span className="font-medium">装備:</span> {savedPlan.equipment_list.length}点
+                        </div>
+                      )}
+                    </div>
+                    
+                    {savedPlan.notes && (
+                      <div className="text-sm text-gray-700">
+                        <span className="font-medium">メモ:</span> {savedPlan.notes}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
             <div className="bg-gray-50 p-3 rounded-md">
               <div className="text-gray-600 mb-1">推定所要時間</div>

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getPublicClimbRecords, ClimbRecordWithMountain } from '@/lib/climb-utils';
+import LikeButton from '@/components/LikeButton';
 import { getThumbnailUrl, getOriginalUrl } from '@/lib/photo-utils';
 import Image from 'next/image';
 
@@ -216,11 +217,20 @@ export default function PublicClimbsPage() {
                 )}
 
                 <div className="pt-4 border-t border-gray-200">
-                  <div className="flex justify-between items-center text-sm text-gray-500">
-                    <span></span>
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center space-x-4">
+                      {/* いいねボタン */}
+                      <LikeButton
+                        type="climb"
+                        contentId={climb.id || ''}
+                        contentOwnerId={climb.user?.id}
+                        size="medium"
+                        variant="outline"
+                      />
+                    </div>
                     <Link
                       href={`/mountains/${climb.mountain_id}`}
-                      className="text-indigo-600 hover:text-indigo-800 font-medium"
+                      className="text-indigo-600 hover:text-indigo-800 font-medium text-sm"
                     >
                       この山の詳細を見る →
                     </Link>

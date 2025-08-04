@@ -5,10 +5,11 @@ import { useAuth } from './auth/AuthProvider';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { getUserClimbRecords, saveClimbRecord } from '@/lib/climb-utils';
+import { getUserClimbRecords, saveClimbRecord, deleteClimbRecord } from '@/lib/climb-utils';
 import PhotoUpload, { UploadedPhoto } from './PhotoUpload';
 import { uploadPhoto, getClimbPhotos, ClimbPhoto } from '@/lib/photo-utils';
 import { createClient } from '@/lib/supabase/client';
+import LikeButton from './LikeButton';
 const supabase = createClient();
 
 interface ClimbRecordProps {
@@ -220,6 +221,58 @@ export default function ClimbRecord({ mountainName, mountainId }: ClimbRecordPro
     setPhotos(newPhotos);
   }, []);
 
+  // 記録の編集ハンドラー
+  const handleEditRecord = useCallback((savedRecord: SavedRecord) => {
+    // フォームに既存データを設定
+    setRecord({
+      date: savedRecord.date,
+      route: savedRecord.route,
+      duration: savedRecord.duration,
+      difficulty: savedRecord.difficulty,
+      weather: savedRecord.weather,
+      companions: savedRecord.companions,
+      notes: savedRecord.notes,
+      rating: savedRecord.rating
+    });
+    
+    // 既存の写真データも設定（編集機能として）
+    if (savedRecord.photos) {
+      const existingPhotos: UploadedPhoto[] = savedRecord.photos.map((photo) => ({
+        file: undefined, // 既存写真はファイルオブジェクトなし
+        preview: photo.thumbnail_path || photo.storage_path,
+        caption: photo.caption || '',
+        uploaded: true,
+        uploading: false,
+        error: undefined,
+        id: photo.id
+      }));
+      setPhotos(existingPhotos);
+    }
+    
+    setShowRecordForm(true);
+  }, []);
+
+  // 記録の削除ハンドラー
+  const handleDeleteRecord = useCallback(async (recordId: string) => {
+    if (!window.confirm('この登山記録を削除しますか？この操作は取り消せません。')) {
+      return;
+    }
+
+    try {
+      const success = await deleteClimbRecord(recordId);
+      if (success) {
+        alert('登山記録を削除しました');
+        // 記録一覧を再読み込み
+        await loadSavedRecords();
+      } else {
+        alert('登山記録の削除に失敗しました');
+      }
+    } catch (error) {
+      console.error('削除処理中のエラー:', error);
+      alert('削除中にエラーが発生しました');
+    }
+  }, [loadSavedRecords]);
+
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
       <div className="flex items-center justify-between mb-4">
@@ -307,6 +360,40 @@ export default function ClimbRecord({ mountainName, mountainId }: ClimbRecordPro
                             📸 写真 {savedRecord.photos.length} 枚
                           </div>
                         )}
+                        
+                        {/* アクションボタンエリア */}
+                        <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-200">
+                          <div className="flex items-center space-x-3">
+                            {/* いいねボタン（自分の記録以外に表示） */}
+                            {user && savedRecord.userId !== user.id && (
+                              <LikeButton
+                                type="climb"
+                                contentId={savedRecord.id}
+                                contentOwnerId={savedRecord.userId}
+                                size="small"
+                                variant="outline"
+                              />
+                            )}
+                          </div>
+                          
+                          {/* 編集・削除ボタン（作成者のみ） */}
+                          {user && savedRecord.userId === user.id && (
+                            <div className="flex items-center space-x-2">
+                              <button
+                                onClick={() => handleEditRecord(savedRecord)}
+                                className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                              >
+                                編集
+                              </button>
+                              <button
+                                onClick={() => handleDeleteRecord(savedRecord.id)}
+                                className="text-sm text-red-600 hover:text-red-800 font-medium"
+                              >
+                                削除
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
