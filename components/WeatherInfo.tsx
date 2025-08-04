@@ -79,12 +79,13 @@ export default function WeatherInfo({ latitude, longitude, mountainName, elevati
   useEffect(() => {
     console.log('🏔️ WeatherInfo useEffect triggered for:', { latitude, longitude, elevation, mountainName });
     
-    // 標高データの取得（常にGoogle API/推定値を使用、山の標高データは使わない）
+    // 標高データの取得（Google Maps APIから座標ベースで取得）
     const fetchElevation = async () => {
-      console.log('📡 Starting elevation fetch from coordinates...');
+      console.log('📡 Starting elevation fetch from Google Maps API...');
       setElevationLoading(true);
       try {
-        // 山の標高データは渡さず、常に座標からAPIで取得
+        // 常にGoogle Maps APIまたは推定値を使用（データベースの山の標高は使わない）
+        console.log('📡 Fetching elevation from coordinates using Google Maps API...');
         const result = await getElevation(latitude, longitude);
         console.log('✅ Elevation fetch completed:', result);
         setElevationData(result);
@@ -100,7 +101,7 @@ export default function WeatherInfo({ latitude, longitude, mountainName, elevati
           });
         }
         
-        // エラーの場合でも簡易推定を表示
+        // エラーの場合は簡易推定を表示
         setElevationData({
           elevation: 500, // デフォルト値
           source: 'estimated',
@@ -454,7 +455,7 @@ export default function WeatherInfo({ latitude, longitude, mountainName, elevati
           天気情報
           {elevationData && (
             <span className="ml-2 text-sm font-normal text-gray-600">
-              (標高 {elevationData.elevation.toLocaleString()}m)
+              (座標地点標高 {elevationData.elevation.toLocaleString()}m)
             </span>
           )}
           {elevationLoading && (
@@ -487,7 +488,7 @@ export default function WeatherInfo({ latitude, longitude, mountainName, elevati
         </div>
       </div>
 
-      {/* 標高情報表示 */}
+      {/* 標高情報表示（Google Maps APIから取得） */}
       {elevationData && (
         <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
           <div className="flex items-center justify-between">
@@ -495,12 +496,12 @@ export default function WeatherInfo({ latitude, longitude, mountainName, elevati
               <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
               </svg>
-              <span className="font-medium">標高: {elevationData.elevation.toLocaleString()}m</span>
+              <span className="font-medium">座標地点の標高: {elevationData.elevation.toLocaleString()}m</span>
             </div>
             <div className="flex items-center space-x-2">
               {elevationData.source === 'google' && (
                 <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
-                  Google API
+                  Google Maps API
                 </span>
               )}
               {elevationData.source === 'estimated' && (
@@ -515,6 +516,11 @@ export default function WeatherInfo({ latitude, longitude, mountainName, elevati
               )}
             </div>
           </div>
+          {elevationData.source === 'google' && (
+            <p className="text-xs text-blue-600 mt-1">
+              📍 この標高は座標地点（{latitude.toFixed(4)}, {longitude.toFixed(4)}）のGoogle Maps APIから取得した値です。
+            </p>
+          )}
           {elevationData.source === 'estimated' && (
             <p className="text-xs text-blue-600 mt-1">
               ⚠️ これは推定値です。より正確な標高データを取得するにはGoogle Maps APIキーを設定してください。

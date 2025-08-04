@@ -161,7 +161,7 @@ export async function getElevation(lat: number, lng: number, useProvidedElevatio
   if (useProvidedElevation !== undefined && useProvidedElevation > 0) {
     console.log(`✅ Using provided elevation: ${useProvidedElevation}m`);
     return {
-      elevation: useProvidedElevation,
+      elevation: Math.round(useProvidedElevation),
       source: 'google', // データベースの値は信頼性が高いものとして扱う
       accuracy: 'high'
     };
@@ -181,7 +181,7 @@ export async function getElevation(lat: number, lng: number, useProvidedElevatio
     if (googleElevation !== null) {
       saveToCache(lat, lng, googleElevation, 'google');
       return {
-        elevation: googleElevation,
+        elevation: Math.round(googleElevation),
         source: 'google',
         accuracy: 'high'
       };
@@ -202,7 +202,7 @@ export async function getElevation(lat: number, lng: number, useProvidedElevatio
   
   console.log(`📐 Using estimated elevation: ${estimatedElevation}m`);
   return {
-    elevation: estimatedElevation,
+    elevation: Math.round(estimatedElevation),
     source: 'estimated',
     accuracy: 'low'
   };
