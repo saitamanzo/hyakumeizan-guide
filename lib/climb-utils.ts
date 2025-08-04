@@ -136,7 +136,7 @@ export async function getUserClimbRecords(userId: string): Promise<ClimbRecordWi
 }
 
 /**
- * 公開されている登山記録を取得
+ * 公開されている登山記録を取得（自分の投稿も含む）
  */
 export async function getPublicClimbRecords(limit: number = 20): Promise<ClimbRecordWithMountain[]> {
   try {

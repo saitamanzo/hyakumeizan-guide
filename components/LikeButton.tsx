@@ -65,23 +65,30 @@ export default function LikeButton({
   useEffect(() => {
     const loadLikeData = async () => {
       try {
+        console.log('🔄 いいね数取得開始:', { type, contentId, userId: user?.id });
         if (type === 'climb') {
           const data = await getClimbLikeCount(contentId, user?.id);
+          console.log('✅ いいね数取得成功:', data);
           setLikeData(data);
         } else {
           const data = await getPlanLikeCount(contentId, user?.id);
+          console.log('✅ いいね数取得成功:', data);
           setLikeData(data);
         }
       } catch (error) {
-        console.error('いいね数の取得に失敗:', error);
+        console.error('❌ いいね数の取得に失敗:', error);
       }
     };
 
-    loadLikeData();
+    if (contentId) {
+      loadLikeData();
+    }
   }, [contentId, type, user?.id]);
 
   // いいねボタンクリック処理
   const handleLikeClick = async () => {
+    console.log('👆 いいねボタンクリック:', { user: !!user, contentId, contentOwnerId, type });
+    
     if (!user) {
       alert('いいねをするにはログインが必要です');
       return;
@@ -93,6 +100,7 @@ export default function LikeButton({
       return;
     }
 
+    console.log('🔄 いいね操作開始:', { userId: user.id, contentId, type });
     setIsLoading(true);
 
     try {
@@ -103,6 +111,8 @@ export default function LikeButton({
         result = await togglePlanLike(user.id, contentId);
       }
 
+      console.log('✅ いいね操作結果:', result);
+
       if (result.success) {
         // 楽観的更新
         setLikeData(prev => ({
@@ -110,12 +120,12 @@ export default function LikeButton({
           user_has_liked: result.action === 'added'
         }));
       } else {
-        console.error('いいね操作に失敗:', result.error);
-        alert('いいね操作に失敗しました');
+        console.error('❌ いいね操作に失敗:', result.error);
+        alert('いいね操作に失敗しました: ' + result.error);
       }
     } catch (error) {
-      console.error('いいね操作中にエラー:', error);
-      alert('いいね操作中にエラーが発生しました');
+      console.error('❌ いいね操作中にエラー:', error);
+      alert('いいね操作中にエラーが発生しました: ' + String(error));
     } finally {
       setIsLoading(false);
     }

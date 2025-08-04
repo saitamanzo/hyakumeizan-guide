@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { getPublicClimbRecords, ClimbRecordWithMountain } from '@/lib/climb-utils';
 import LikeButton from '@/components/LikeButton';
 import { SocialShareButtonsCompact } from '@/components/SocialShareButtons';
-import { getThumbnailUrl, getOriginalUrl } from '@/lib/photo-utils';
 import Image from 'next/image';
 
 export default function PublicClimbsPage() {
@@ -182,14 +181,13 @@ export default function PublicClimbsPage() {
                     <dt className="text-sm font-medium text-gray-500 mb-2">写真</dt>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                       {climb.photos.slice(0, 4).map((photo, index) => {
-                        const imageUrl = photo.thumbnail_path 
-                          ? getThumbnailUrl(photo.thumbnail_path) 
-                          : getOriginalUrl(photo.storage_path);
+                        // Supabaseの公開URLを直接使用
+                        const imageUrl = photo.thumbnail_path || photo.storage_path;
                         
                         return (
                           <div key={photo.id || index} className="relative h-20 rounded-md overflow-hidden">
                             <Image
-                              src={imageUrl}
+                              src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/climb-photos/${imageUrl}`}
                               alt={photo.caption || `${climb.mountain_name}の写真 ${index + 1}`}
                               width={80}
                               height={80}
@@ -197,7 +195,12 @@ export default function PublicClimbsPage() {
                               onError={(e) => {
                                 console.error('📷 画像読み込みエラー:', imageUrl);
                                 const target = e.target as HTMLImageElement;
-                                target.src = '/placeholder-mountain.jpg';
+                                // プレースホルダー画像に置き換え
+                                target.style.display = 'none';
+                                const parent = target.parentElement;
+                                if (parent) {
+                                  parent.innerHTML = '<div class="w-full h-full bg-gray-200 rounded-md flex items-center justify-center"><span class="text-gray-500 text-sm">📷</span></div>';
+                                }
                               }}
                             />
                             {photo.caption && (

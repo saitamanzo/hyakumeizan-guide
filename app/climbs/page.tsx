@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { getUserClimbRecords, deleteClimbRecord, updateClimbRecordPublicStatus } from '@/lib/climb-utils';
@@ -20,10 +21,19 @@ interface ClimbRecordUI {
   companions: string;
   notes: string;
   rating: number;
-  photos: unknown[];
+  photos: ClimbPhotoUI[];
   createdAt: string;
   isPublic: boolean;
   publishedAt?: string;
+}
+
+// 写真用の型定義
+interface ClimbPhotoUI {
+  id: string;
+  storage_path: string;
+  thumbnail_path?: string;
+  caption?: string;
+  sort_order?: number;
 }
 
 export default function ClimbsPage() {
@@ -246,13 +256,50 @@ export default function ClimbsPage() {
                   <div className="mt-4">
                     <h4 className="text-sm font-medium text-gray-700 mb-2">写真 ({climb.photos.length}枚)</h4>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                      {climb.photos.slice(0, 4).map((photo, index) => (
-                        <div key={index} className="relative aspect-square">
-                          <div className="w-full h-full bg-gray-200 rounded-lg flex items-center justify-center">
-                            <span className="text-gray-500 text-sm">📷</span>
+                      {climb.photos.slice(0, 4).map((photo, index) => {
+                        // Supabaseの公開URLを直接使用
+                        const imageUrl = photo.thumbnail_path || photo.storage_path;
+                        
+                        return (
+                          <div key={photo.id || index} className="relative aspect-square">
+                            {imageUrl ? (
+                              <Image
+                                src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/climb-photos/${imageUrl}`}
+                                alt={photo.caption || `${climb.mountainName}の写真 ${index + 1}`}
+                                width={200}
+                                height={200}
+                                className="w-full h-full object-cover rounded-lg"
+                                onError={(e) => {
+                                  console.error('📷 画像読み込みエラー:', imageUrl);
+                                  const target = e.target as HTMLImageElement;
+                                  // プレースホルダー画像に置き換え
+                                  target.style.display = 'none';
+                                  const parent = target.parentElement;
+                                  if (parent) {
+                                    parent.innerHTML = '<div class="w-full h-full bg-gray-200 rounded-lg flex items-center justify-center"><span class="text-gray-500 text-sm">📷</span></div>';
+                                  }
+                                }}
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-gray-200 rounded-lg flex items-center justify-center">
+                                <span className="text-gray-500 text-sm">📷</span>
+                              </div>
+                            )}
+                            {photo.caption && (
+                              <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 rounded-b-lg">
+                                {photo.caption}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                      {climb.photos.length > 4 && (
+                        <div className="relative aspect-square">
+                          <div className="w-full h-full bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300">
+                            <span className="text-gray-600 text-sm">+{climb.photos.length - 4}</span>
                           </div>
                         </div>
-                      ))}
+                      )}
                     </div>
                   </div>
                 )}

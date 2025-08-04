@@ -122,14 +122,18 @@ export async function getClimbLikeCount(
   userId?: string
 ): Promise<LikeCount> {
   try {
+    console.log('🔍 いいね数取得開始:', { climbId, userId });
+    
     // いいね数を取得
     const { data: countData, error: countError } = await supabase
       .from('likes')
       .select('id')
       .eq('climb_id', climbId);
 
+    console.log('📊 いいね数クエリ結果:', { countData, countError });
+
     if (countError) {
-      console.error('いいね数取得エラー:', countError);
+      console.error('❌ いいね数取得エラー:', countError);
       return { count: 0, user_has_liked: false };
     }
 
@@ -145,14 +149,18 @@ export async function getClimbLikeCount(
         .eq('user_id', userId)
         .single();
 
+      console.log('👤 ユーザーいいねチェック結果:', { userLikeData, userLikeError });
+
       if (!userLikeError && userLikeData) {
         user_has_liked = true;
       }
     }
 
-    return { count, user_has_liked };
+    const result = { count, user_has_liked };
+    console.log('✅ いいね数取得成功:', result);
+    return result;
   } catch (error) {
-    console.error('いいね数取得例外:', error);
+    console.error('❌ いいね数取得例外:', error);
     return { count: 0, user_has_liked: false };
   }
 }
@@ -208,6 +216,8 @@ export async function toggleClimbLike(
   climbId: string
 ): Promise<{ success: boolean; action: 'added' | 'removed'; error?: string }> {
   try {
+    console.log('🔄 いいねトグル開始:', { userId, climbId });
+    
     // 現在のいいね状況をチェック
     const { data: existingLike, error: checkError } = await supabase
       .from('likes')
@@ -216,14 +226,19 @@ export async function toggleClimbLike(
       .eq('climb_id', climbId)
       .single();
 
+    console.log('🔍 既存いいねチェック:', { existingLike, checkError });
+
     if (checkError && checkError.code !== 'PGRST116') {
       // PGRST116 = 結果が見つからない（いいねしていない）
+      console.error('❌ いいねチェックエラー:', checkError);
       return { success: false, action: 'removed', error: checkError.message };
     }
 
     if (existingLike) {
       // いいねを削除
+      console.log('🗑️ いいねを削除します');
       const result = await removeClimbLike(userId, climbId);
+      console.log('✅ いいね削除結果:', result);
       return { 
         success: result.success, 
         action: 'removed', 
@@ -231,7 +246,9 @@ export async function toggleClimbLike(
       };
     } else {
       // いいねを追加
+      console.log('❤️ いいねを追加します');
       const result = await addClimbLike(userId, climbId);
+      console.log('✅ いいね追加結果:', result);
       return { 
         success: result.success, 
         action: 'added', 
@@ -239,6 +256,7 @@ export async function toggleClimbLike(
       };
     }
   } catch (error) {
+    console.error('❌ いいねトグル例外:', error);
     return { 
       success: false, 
       action: 'removed', 
