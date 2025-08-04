@@ -128,6 +128,22 @@ export async function getUserClimbRecords(userId: string): Promise<ClimbRecordWi
     console.log('getUserClimbRecords: 成功 -', result.length, '件取得');
     console.log('写真付き記録:', result.filter(r => r.photos && r.photos.length > 0).length, '件');
     
+    // 写真データの詳細をログ出力
+    result.forEach((record, index) => {
+      if (record.photos && record.photos.length > 0) {
+        console.log(`記録 ${index + 1} (${record.mountain_name}):`, {
+          climbId: record.id,
+          photoCount: record.photos.length,
+          photos: record.photos.map((p: ClimbPhoto) => ({
+            id: p.id,
+            storage_path: p.storage_path,
+            thumbnail_path: p.thumbnail_path,
+            caption: p.caption
+          }))
+        });
+      }
+    });
+    
     return result;
   } catch (error) {
     console.error('getUserClimbRecords: 例外発生:', error);

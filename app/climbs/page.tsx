@@ -56,6 +56,7 @@ export default function ClimbsPage() {
     try {
       const records = await getUserClimbRecords(user.id);
       console.log('ClimbsPage: 記録読み込み成功 -', records.length, '件');
+      console.log('🔍 取得された生データ:', records);
       
       // データベースの形式からUIの形式に変換
       const convertedClimbs: ClimbRecordUI[] = records.map((record, index) => ({
@@ -75,6 +76,24 @@ export default function ClimbsPage() {
         isPublic: record.is_public || false,
         publishedAt: record.published_at
       }));
+      
+      console.log('📸 写真データ変換結果:', convertedClimbs.map(climb => ({
+        id: climb.id,
+        mountainName: climb.mountainName,
+        photoCount: climb.photos.length,
+        firstPhoto: climb.photos[0] ? {
+          id: climb.photos[0].id,
+          storage_path: climb.photos[0].storage_path,
+          thumbnail_path: climb.photos[0].thumbnail_path
+        } : null
+      })));
+      
+      // 現在のユーザーIDとデータのuser_idをチェック
+      console.log('👤 ユーザーIDチェック:', {
+        currentUserId: user.id,
+        recordUserIds: records.map(r => r.user_id),
+        photosFromSameUser: records.filter(r => r.user_id === user.id).flatMap(r => r.photos || [])
+      });
       
       setClimbs(convertedClimbs);
     } catch (dbError) {
@@ -156,19 +175,29 @@ export default function ClimbsPage() {
   }
 
   return (
-    <div className="py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">登山記録</h1>
-          <Link
-            href="/mountains"
-            className="bg-orange-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-orange-700 transition-colors"
-          >
-            新しい記録を追加
-          </Link>
-        </div>
+      <div className="py-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center mb-8">
+            <h1 className="text-3xl font-bold text-gray-900">登山記録</h1>
+            <Link
+              href="/mountains"
+              className="bg-orange-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-orange-700 transition-colors"
+            >
+              新しい記録を追加
+            </Link>
+          </div>
 
-        {climbs.length === 0 ? (
+          {/* 開発環境でのユーザー情報表示 */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
+              <p className="text-sm text-blue-800">
+                🔍 <strong>開発者情報:</strong> 現在のユーザーID: {user?.id || 'undefined'}
+              </p>
+              <p className="text-xs text-blue-700 mt-1">
+                登録済み記録数: {climbs.length}件
+              </p>
+            </div>
+          )}        {climbs.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-gray-500 mb-4">
               まだ登山記録がありません
@@ -252,31 +281,47 @@ export default function ClimbsPage() {
                   </div>
                 )}
 
-                {climb.photos && climb.photos.length > 0 && (
+                {climb.photos && climb.photos.length > 0 ? (
                   <div className="mt-4">
                     <h4 className="text-sm font-medium text-gray-700 mb-2">写真 ({climb.photos.length}枚)</h4>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                       {climb.photos.slice(0, 4).map((photo, index) => {
                         // Supabaseの公開URLを直接使用
                         const imageUrl = photo.thumbnail_path || photo.storage_path;
+                        const fullImageUrl = imageUrl 
+                          ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/climb-photos/${imageUrl}`
+                          : null;
+                        
+                        console.log(`📷 画像表示 ${index + 1}:`, {
+                          photoId: photo.id,
+                          storage_path: photo.storage_path,
+                          thumbnail_path: photo.thumbnail_path,
+                          imageUrl,
+                          fullImageUrl,
+                          caption: photo.caption
+                        });
                         
                         return (
                           <div key={photo.id || index} className="relative aspect-square">
-                            {imageUrl ? (
+                            {fullImageUrl ? (
                               <Image
-                                src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/climb-photos/${imageUrl}`}
+                                src={fullImageUrl}
                                 alt={photo.caption || `${climb.mountainName}の写真 ${index + 1}`}
                                 width={200}
                                 height={200}
                                 className="w-full h-full object-cover rounded-lg"
                                 onError={(e) => {
-                                  console.error('📷 画像読み込みエラー:', imageUrl);
+                                  console.error('📷 画像読み込みエラー詳細:', {
+                                    url: fullImageUrl,
+                                    photo: photo,
+                                    error: e
+                                  });
                                   const target = e.target as HTMLImageElement;
                                   // プレースホルダー画像に置き換え
                                   target.style.display = 'none';
                                   const parent = target.parentElement;
                                   if (parent) {
-                                    parent.innerHTML = '<div class="w-full h-full bg-gray-200 rounded-lg flex items-center justify-center"><span class="text-gray-500 text-sm">📷</span></div>';
+                                    parent.innerHTML = '<div class="w-full h-full bg-red-200 rounded-lg flex items-center justify-center"><span class="text-red-600 text-xs">ストレージエラー<br/>バケット未作成</span></div>';
                                   }
                                 }}
                               />
@@ -301,7 +346,33 @@ export default function ClimbsPage() {
                         </div>
                       )}
                     </div>
+                    {/* ストレージバケット未作成の警告 */}
+                    {process.env.NODE_ENV === 'development' && (
+                      <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                        <p className="text-sm text-yellow-800">
+                          ⚠️ <strong>開発者向け:</strong> Supabaseストレージバケット &apos;climb-photos&apos; が作成されていないため、写真が表示されません。
+                        </p>
+                        <p className="text-xs text-yellow-700 mt-1">
+                          Supabaseダッシュボード &gt; Storage &gt; Create bucket: &quot;climb-photos&quot; (Public)
+                        </p>
+                      </div>
+                    )}
                   </div>
+                ) : (
+                  // 写真がない場合のメッセージ（開発時のみ表示）
+                  process.env.NODE_ENV === 'development' && (
+                    <div className="mt-4">
+                      <h4 className="text-sm font-medium text-gray-700 mb-2">写真</h4>
+                      <div className="text-xs text-gray-500 bg-yellow-50 p-2 rounded border">
+                        📷 この記録には写真が登録されていません
+                        {climb.photos && (
+                          <div className="mt-1">
+                            写真配列: {JSON.stringify(climb.photos, null, 2)}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
                 )}
               </div>
             ))}
