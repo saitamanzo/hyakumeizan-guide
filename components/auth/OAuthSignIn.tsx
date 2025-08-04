@@ -12,8 +12,15 @@ const getURL = () => {
     process?.env?.NEXT_PUBLIC_SITE_URL ?? // Set this to your site URL in production env.
     process?.env?.NEXT_PUBLIC_VERCEL_URL ?? // Automatically set by Vercel.
     'http://localhost:3000/';
-  // Make sure to include `https` in production URLs.
-  url = url.includes('http') ? url : `https://${url}`;
+  
+  // 本番環境では常にhttpsを使用
+  if (process.env.NODE_ENV === 'production') {
+    url = 'https://hyakumeizan-guide.vercel.app/';
+  } else {
+    // 開発環境
+    url = url.includes('http') ? url : `http://${url}`;
+  }
+  
   // Make sure to include a trailing `/`.
   url = url.charAt(url.length - 1) === '/' ? url : `${url}/`;
   return url;
@@ -23,12 +30,27 @@ export default function OAuthSignIn({ provider, children }: { provider: 'google'
   const supabase = createClient();
 
   const handleOAuthSignIn = async () => {
-    await supabase.auth.signInWithOAuth({
+    const redirectUrl = `${getURL()}auth/callback`;
+    console.log('🔑 OAuth Sign In Configuration:', {
+      provider,
+      redirectTo: redirectUrl,
+      siteUrl: getURL(),
+      environment: process.env.NODE_ENV
+    });
+
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${getURL()}auth/callback`,
+        redirectTo: redirectUrl,
       },
     });
+
+    if (error) {
+      console.error('❌ OAuth Sign In Error:', error);
+      alert(`認証エラー: ${error.message}`);
+    } else {
+      console.log('✅ OAuth Sign In initiated:', data);
+    }
   };
 
   return (
