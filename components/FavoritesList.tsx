@@ -1,8 +1,10 @@
 'use client';
 
+
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from './auth/AuthProvider';
+import { createClient } from '@/lib/supabase/client';
 import type { Mountain } from '@/types/database';
 
 interface FavoritesListProps {
@@ -13,6 +15,8 @@ export default function FavoritesList({ initialMountains }: FavoritesListProps) 
   const { user, loading: authLoading } = useAuth();
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [favoriteMountains, setFavoriteMountains] = useState<Mountain[]>([]);
+  const [loadingFavorites, setLoadingFavorites] = useState(true);
+  const supabase = createClient();
 
   // 認証チェック
   useEffect(() => {
@@ -21,36 +25,62 @@ export default function FavoritesList({ initialMountains }: FavoritesListProps) 
     }
   }, [user, authLoading]);
 
-  // お気に入り機能
-  const toggleFavorite = (mountainId: string) => {
+  // サーバー同期型お気に入り機能
+  const toggleFavorite = async (mountainId: string) => {
     if (!user) return;
-    
+    const isFavorite = favorites.has(mountainId);
     setFavorites(prev => {
       const newFavorites = new Set(prev);
-      if (newFavorites.has(mountainId)) {
+      if (isFavorite) {
         newFavorites.delete(mountainId);
       } else {
         newFavorites.add(mountainId);
       }
-      // ユーザー固有のキーでローカルストレージに保存
-      localStorage.setItem(`mountainFavorites_${user.id}`, JSON.stringify([...newFavorites]));
       return newFavorites;
     });
+    // サーバー反映
+    if (isFavorite) {
+      // 削除
+      await supabase
+        .from('likes')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('climb_id', mountainId);
+    } else {
+      // 追加
+      await supabase
+        .from('likes')
+        .insert({ user_id: user.id, climb_id: mountainId });
+    }
+    // 再取得
+    fetchFavorites();
   };
 
-  // ローカルストレージからお気に入りを読み込み
+  // サーバーからお気に入り取得
+  const fetchFavorites = async () => {
+    if (!user) return;
+    setLoadingFavorites(true);
+    const { data, error } = await supabase
+      .from('likes')
+      .select('climb_id')
+      .eq('user_id', user.id);
+    if (error) {
+      setFavorites(new Set());
+      setFavoriteMountains([]);
+      setLoadingFavorites(false);
+      return;
+    }
+    const favoriteIds = new Set((data ?? []).map((like: { climb_id: string }) => like.climb_id));
+    setFavorites(favoriteIds);
+    const filtered = initialMountains.filter(mountain => favoriteIds.has(mountain.id));
+    setFavoriteMountains(filtered);
+    setLoadingFavorites(false);
+  };
+
   useEffect(() => {
     if (!user) return;
-    
-    const savedFavorites = localStorage.getItem(`mountainFavorites_${user.id}`);
-    if (savedFavorites) {
-      const favoriteIds = new Set(JSON.parse(savedFavorites) as string[]);
-      setFavorites(favoriteIds);
-      
-      // お気に入りの山をフィルタリング
-      const filtered = initialMountains.filter(mountain => favoriteIds.has(mountain.id));
-      setFavoriteMountains(filtered);
-    }
+    fetchFavorites();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialMountains, user]);
 
   // お気に入りが変更されたときに再フィルタリング
@@ -65,6 +95,15 @@ export default function FavoritesList({ initialMountains }: FavoritesListProps) 
       <div className="py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <p>ログインページにリダイレクト中...</p>
+        </div>
+      </div>
+    );
+  }
+  if (loadingFavorites) {
+    return (
+      <div className="py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <p>お気に入りを読み込み中...</p>
         </div>
       </div>
     );
