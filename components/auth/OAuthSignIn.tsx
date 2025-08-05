@@ -3,7 +3,18 @@
 import { createClient } from "@/lib/supabase/client";
 
 const Button = ({ children, className, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { children: React.ReactNode; className?: string; }) => (
-  <button {...props} className={className}>{children}</button>
+  <button
+    {...props}
+    className={
+      [
+        "w-full flex items-center justify-center gap-2 py-3 px-4 rounded-md border-2 border-red-500 bg-white text-red-600 font-bold text-lg shadow-sm transition-all duration-150",
+        "hover:bg-red-50 hover:shadow-lg hover:border-red-600 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-2",
+        className
+      ].filter(Boolean).join(' ')
+    }
+  >
+    {children}
+  </button>
 );
 
 
