@@ -2,13 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from './auth/AuthProvider';
-import { 
-  getClimbLikeCount, 
-  getPlanLikeCount, 
-  toggleClimbLike, 
-  togglePlanLike,
-  LikeCount 
-} from '@/lib/like-utils';
+import { getClimbLikeCount, toggleClimbLike } from '@/lib/like-utils';
+import { getPlanFavoriteCount, togglePlanFavorite } from '@/lib/plan-favorite-utils';
+
+interface LikeCount {
+  count: number;
+  user_has_liked: boolean;
+}
 
 interface LikeButtonProps {
   type: 'climb' | 'plan';
@@ -71,9 +71,9 @@ export default function LikeButton({
           console.log('✅ いいね数取得成功:', data);
           setLikeData(data);
         } else {
-          const data = await getPlanLikeCount(contentId, user?.id);
+          const data = await getPlanFavoriteCount(contentId, user?.id);
           console.log('✅ いいね数取得成功:', data);
-          setLikeData(data);
+          setLikeData({ count: data.count, user_has_liked: data.user_has_favorited });
         }
       } catch (error) {
         console.error('❌ いいね数の取得に失敗:', error);
@@ -108,17 +108,22 @@ export default function LikeButton({
       if (type === 'climb') {
         result = await toggleClimbLike(user.id, contentId);
       } else {
-        result = await togglePlanLike(user.id, contentId);
+        result = await togglePlanFavorite(user.id, contentId);
       }
 
       console.log('✅ いいね操作結果:', result);
 
       if (result.success) {
         // 楽観的更新
-        setLikeData(prev => ({
-          count: result.action === 'added' ? prev.count + 1 : prev.count - 1,
-          user_has_liked: result.action === 'added'
-        }));
+        setLikeData(prev => {
+          let liked: boolean | undefined = undefined;
+          if ('liked' in result) liked = result.liked;
+          if ('favorited' in result) liked = result.favorited;
+          return {
+            count: liked !== undefined ? (liked ? prev.count + 1 : prev.count - 1) : prev.count,
+            user_has_liked: liked !== undefined ? liked : prev.user_has_liked
+          };
+        });
       } else {
         console.error('❌ いいね操作に失敗:', result.error);
         alert('いいね操作に失敗しました: ' + result.error);

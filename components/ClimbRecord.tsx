@@ -87,7 +87,7 @@ export default function ClimbRecord({ mountainName, mountainId }: ClimbRecordPro
               mountainId: record.mountain_id,
               mountainName: record.mountain_name || mountainName,
               userId: record.user_id,
-              date: record.climb_date,
+              date: record.climb_date ?? '',
               route: '一般ルート',
               duration: '記録なし',
               difficulty: record.difficulty_rating === 1 ? 'easy' : record.difficulty_rating === 3 ? 'moderate' : 'hard',
@@ -288,13 +288,22 @@ export default function ClimbRecord({ mountainName, mountainId }: ClimbRecordPro
           </svg>
           登山記録
         </h3>
-        <button
-          onClick={handleRecordButtonClick}
-          disabled={loading}
-          className={`px-4 py-2 ${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'} text-white rounded-md transition-colors`}
-        >
-          {loading ? '読込中...' : (showRecordForm ? 'キャンセル' : '記録を作成')}
-        </button>
+        {showRecordForm ? (
+          <button
+            onClick={() => setShowRecordForm(false)}
+            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors"
+          >
+            キャンセル
+          </button>
+        ) : (
+          <button
+            onClick={handleRecordButtonClick}
+            disabled={loading}
+            className={`px-4 py-2 ${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'} text-white rounded-md transition-colors`}
+          >
+            {loading ? '読込中...' : '記録を作成'}
+          </button>
+        )}
       </div>
 
       {!showRecordForm ? (

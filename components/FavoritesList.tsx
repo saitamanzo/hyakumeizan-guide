@@ -42,15 +42,15 @@ export default function FavoritesList({ initialMountains }: FavoritesListProps) 
     if (isFavorite) {
       // 削除
       await supabase
-        .from('likes')
+        .from('mountain_favorites')
         .delete()
         .eq('user_id', user.id)
-        .eq('climb_id', mountainId);
+        .eq('mountain_id', mountainId);
     } else {
       // 追加
       await supabase
-        .from('likes')
-        .insert({ user_id: user.id, climb_id: mountainId });
+        .from('mountain_favorites')
+        .insert({ user_id: user.id, mountain_id: mountainId });
     }
     // 再取得
     fetchFavorites();
@@ -61,16 +61,15 @@ export default function FavoritesList({ initialMountains }: FavoritesListProps) 
     if (!user) return;
     setLoadingFavorites(true);
     const { data, error } = await supabase
-      .from('likes')
-      .select('climb_id')
-      .eq('user_id', user.id);
+      .from('mountain_favorites')
+      .select('mountain_id');
     if (error) {
       setFavorites(new Set());
       setFavoriteMountains([]);
       setLoadingFavorites(false);
       return;
     }
-    const favoriteIds = new Set((data ?? []).map((like: { climb_id: string }) => like.climb_id));
+    const favoriteIds = new Set((data ?? []).map((like: { mountain_id: string }) => like.mountain_id));
     setFavorites(favoriteIds);
     const filtered = initialMountains.filter(mountain => favoriteIds.has(mountain.id));
     setFavoriteMountains(filtered);

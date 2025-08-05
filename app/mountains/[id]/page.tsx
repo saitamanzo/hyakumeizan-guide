@@ -1,5 +1,8 @@
 import { notFound } from 'next/navigation';
 import { getMountainWithRoutes, getMountainReviews } from '@/app/actions/mountain';
+import LikeButton from '@/components/LikeButton';
+import { getPublicPlansByMountain } from '@/lib/plan-utils';
+import { getPublicClimbRecordsByMountain } from '@/lib/climb-utils';
 import ReviewSection from '@/components/ReviewSection';
 import ClimbingPlan from '@/components/ClimbingPlan';
 import ClimbRecord from '@/components/ClimbRecord';
@@ -12,9 +15,11 @@ export default async function MountainPage({
 }) {
   try {
     const { id } = await params;
-    const [mountain, reviews] = await Promise.all([
+    const [mountain, reviews, publicPlans, publicClimbs] = await Promise.all([
       getMountainWithRoutes(id),
-      getMountainReviews(id)
+      getMountainReviews(id),
+      getPublicPlansByMountain(id),
+      getPublicClimbRecordsByMountain(id)
     ]);
 
     if (!mountain) {
@@ -28,6 +33,7 @@ export default async function MountainPage({
     return (
       <div className="py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* ...existing code... */}
           {/* ヘッダーセクション */}
           <div className="relative pb-8">
             <div className="h-64 w-full bg-gray-200 rounded-lg"></div>
@@ -171,6 +177,63 @@ export default async function MountainPage({
             reviews={reviews} 
             mountainId={id}
           />
+
+          {/* みんなの計画・記録一覧（ページ下部に移動） */}
+          <div className="mt-12">
+            {publicPlans && publicPlans.length > 0 && (
+              <div className="mb-8">
+                <h2 className="text-xl font-bold text-orange-700 mb-2">この山の公開登山計画</h2>
+                <ul className="space-y-2">
+                  {publicPlans.map(plan => (
+                    <li key={plan.id} className="bg-orange-50 border border-orange-200 rounded p-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="font-semibold">{plan.title}</span>
+                          <span className="ml-2 text-xs text-gray-500">by {plan.user?.display_name || 'ユーザー'}</span>
+                          {plan.planned_date && (
+                            <span className="ml-2 text-xs text-gray-500">({new Date(plan.planned_date).toLocaleDateString('ja-JP')})</span>
+                          )}
+                        </div>
+                        <div>
+                          {/* いいねボタン */}
+                          <span className="ml-2">
+                            <LikeButton type="plan" contentId={plan.id || ''} contentOwnerId={plan.user_id || ''} size="small" variant="outline" />
+                          </span>
+                        </div>
+                      </div>
+                      {plan.notes && <div className="text-xs text-gray-700 mt-1">{plan.notes}</div>}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {publicClimbs && publicClimbs.length > 0 && (
+              <div className="mb-8">
+                <h2 className="text-xl font-bold text-green-700 mb-2">この山の公開登山記録</h2>
+                <ul className="space-y-2">
+                  {publicClimbs.map(climb => (
+                    <li key={climb.id} className="bg-green-50 border border-green-200 rounded p-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="font-semibold">{climb.user?.display_name || 'ユーザー'}</span>
+                          {climb.climb_date && (
+                            <span className="ml-2 text-xs text-gray-500">({new Date(climb.climb_date).toLocaleDateString('ja-JP')})</span>
+                          )}
+                        </div>
+                        <div>
+                          {/* いいねボタン */}
+                          <span className="ml-2">
+                            <LikeButton type="climb" contentId={climb.id || ''} contentOwnerId={climb.user_id || ''} size="small" variant="outline" />
+                          </span>
+                        </div>
+                      </div>
+                      {climb.notes && <div className="text-xs text-gray-700 mt-1">{climb.notes}</div>}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );

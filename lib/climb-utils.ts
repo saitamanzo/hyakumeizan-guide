@@ -10,25 +10,16 @@ export interface ClimbPhoto {
   sort_order?: number;
 }
 
+
 // 基本的な登山記録の型定義（データベーススキーマに合わせて）
 export interface ClimbRecord {
   id?: string;
   user_id: string;
   mountain_id: string;
   route_id?: string;
-  climb_date: string;
-  start_time?: string;
-  end_time?: string;
-  weather_conditions?: string;
-  notes?: string;
-  difficulty_rating?: number;
-  is_public?: boolean;
-  published_at?: string;
-  created_at?: string;
-  updated_at?: string;
 }
 
-// 表示用の登山記録（山の名前と写真データ込み）
+// 表示用の登山記録（山の名前・写真・ユーザー・いいね数込み）
 export interface ClimbRecordWithMountain extends ClimbRecord {
   mountain_name?: string;
   photos?: ClimbPhoto[];
@@ -36,7 +27,16 @@ export interface ClimbRecordWithMountain extends ClimbRecord {
     id: string;
     display_name?: string;
   };
+  like_count?: number;
+  notes?: string;
+  published_at?: string;
+  difficulty_rating?: number;
+  climb_date?: string;
+  weather_conditions?: string;
+  is_public?: boolean;
+  created_at?: string;
 }
+
 
 /**
  * 登山記録を保存
@@ -151,10 +151,11 @@ export async function getUserClimbRecords(userId: string): Promise<ClimbRecordWi
   }
 }
 
+
 /**
  * 公開されている登山記録を取得（自分の投稿も含む）
  */
-export async function getPublicClimbRecords(limit: number = 20): Promise<ClimbRecordWithMountain[]> {
+export async function getPublicClimbRecords(limit: number = 50): Promise<ClimbRecordWithMountain[]> {
   try {
     const { data, error } = await supabase
       .from('climbs')
@@ -168,7 +169,8 @@ export async function getPublicClimbRecords(limit: number = 20): Promise<ClimbRe
           thumbnail_path,
           caption,
           sort_order
-        )
+        ),
+        climb_favorites(count)
       `)
       .eq('is_public', true)
       .order('published_at', { ascending: false })
@@ -189,7 +191,8 @@ export async function getPublicClimbRecords(limit: number = 20): Promise<ClimbRe
         : record.users,
       // 写真データをソートして追加
       photos: (record.climb_photos || [])
-        .sort((a: ClimbPhoto, b: ClimbPhoto) => (a.sort_order || 0) - (b.sort_order || 0))
+        .sort((a: ClimbPhoto, b: ClimbPhoto) => (a.sort_order || 0) - (b.sort_order || 0)),
+      like_count: Array.isArray(record.climb_favorites) ? record.climb_favorites[0]?.count || 0 : 0
     }));
 
     return result;
@@ -305,6 +308,8 @@ export async function updateClimbRecordPublicStatus(
 /**
  * 登山記録を更新
  */
+
+// TODO: 実装予定
 export async function updateClimbRecord(
   recordId: string,
   data: {
@@ -318,25 +323,12 @@ export async function updateClimbRecord(
     is_public?: boolean;
   }
 ): Promise<{ success: boolean; error?: string }> {
-  try {
-    const { error } = await supabase
-      .from('climbs')
-      .update(data)
-      .eq('id', recordId);
-
-    if (error) {
-      return { success: false, error: error.message };
-    }
-
-    return { success: true };
-  } catch (error) {
-    return { success: false, error: String(error) };
-  }
+  // ...実装予定...
+  return { success: false, error: 'Not implemented' };
 }
 
-/**
- * 登山記録を削除
- */
+
+
 export async function deleteClimbRecord(recordId: string): Promise<boolean> {
   try {
     const { error } = await supabase

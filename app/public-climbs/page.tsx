@@ -7,30 +7,50 @@ import LikeButton from '@/components/LikeButton';
 import { SocialShareButtonsCompact } from '@/components/SocialShareButtons';
 import Image from 'next/image';
 
+
 export default function PublicClimbsPage() {
   const [climbs, setClimbs] = useState<ClimbRecordWithMountain[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState<'new' | 'like'>('new');
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     const loadPublicClimbs = async () => {
       setLoading(true);
       setError(null);
-      
       try {
         const records = await getPublicClimbRecords(50);
-        console.log('✅ 公開登山記録取得成功:', records.length, '件');
         setClimbs(records);
-      } catch (err) {
-        console.error('❌ 公開登山記録取得エラー:', err);
+      } catch {
         setError('データの読み込みに失敗しました');
       } finally {
         setLoading(false);
       }
     };
-
     loadPublicClimbs();
   }, []);
+
+  // 検索・並べ替え適用
+  const filteredClimbs = climbs
+    .filter(climb => {
+      if (!search) return true;
+      const keyword = search.toLowerCase();
+      return (
+        (climb.mountain_name && climb.mountain_name.toLowerCase().includes(keyword)) ||
+        (climb.user?.display_name && climb.user.display_name.toLowerCase().includes(keyword)) ||
+        (climb.notes && climb.notes.toLowerCase().includes(keyword))
+      );
+    })
+    .sort((a, b) => {
+      if (sortKey === 'like') {
+        // いいね数降順（未取得の場合は0扱い）
+        return (b.like_count || 0) - (a.like_count || 0);
+      } else {
+        // 新着順（published_at降順）
+        return (b.published_at ? new Date(b.published_at).getTime() : 0) - (a.published_at ? new Date(a.published_at).getTime() : 0);
+      }
+    });
 
   const getDifficultyBadge = (rating?: number) => {
     if (!rating) return null;
@@ -113,8 +133,27 @@ export default function PublicClimbsPage() {
           <h1 className="text-3xl font-bold text-gray-900">みんなの登山記録</h1>
           <p className="mt-2 text-gray-600">他の登山者が公開している登山記録を見ることができます</p>
         </div>
-
-        {climbs.length === 0 ? (
+        {/* 検索・並べ替えUI */}
+        <div className="flex flex-col md:flex-row md:items-center gap-2 mb-6">
+          <input
+            type="text"
+            placeholder="山名・ユーザー名・内容で検索"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="border border-gray-300 rounded px-3 py-2 w-full md:w-72 text-sm"
+          />
+          <div className="flex gap-2 ml-auto">
+            <button
+              className={`px-3 py-2 rounded text-sm font-medium border ${sortKey === 'new' ? 'bg-green-600 text-white' : 'bg-white text-gray-700 border-gray-300'}`}
+              onClick={() => setSortKey('new')}
+            >新着順</button>
+            <button
+              className={`px-3 py-2 rounded text-sm font-medium border ${sortKey === 'like' ? 'bg-green-600 text-white' : 'bg-white text-gray-700 border-gray-300'}`}
+              onClick={() => setSortKey('like')}
+            >いいね順</button>
+          </div>
+        </div>
+        {filteredClimbs.length === 0 ? (
           <div className="text-center py-12">
             <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -126,7 +165,7 @@ export default function PublicClimbsPage() {
           </div>
         ) : (
           <div className="space-y-6">
-            {climbs.map((climb) => (
+            {filteredClimbs.map((climb) => (
               <div key={climb.id || 'unknown'} className="bg-white shadow-sm rounded-lg border border-gray-200 p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">

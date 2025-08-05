@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { getMountains } from '@/app/actions/mountains';
 import MountainsList from '@/components/MountainsList';
 

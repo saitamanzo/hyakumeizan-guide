@@ -50,14 +50,14 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
     });
     if (isFavorite) {
       await supabase
-        .from('likes')
+        .from('mountain_favorites')
         .delete()
         .eq('user_id', user.id)
-        .eq('climb_id', mountainId);
+        .eq('mountain_id', mountainId);
     } else {
       await supabase
-        .from('likes')
-        .insert({ user_id: user.id, climb_id: mountainId });
+        .from('mountain_favorites')
+        .insert({ user_id: user.id, mountain_id: mountainId });
     }
     fetchFavorites();
   };
@@ -71,15 +71,14 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
     }
     setLoadingFavorites(true);
     const { data, error } = await supabase
-      .from('likes')
-      .select('climb_id')
-      .eq('user_id', user.id);
+      .from('mountain_favorites')
+      .select('mountain_id');
     if (error) {
       setFavorites(new Set());
       setLoadingFavorites(false);
       return;
     }
-    const favoriteIds = new Set((data ?? []).map((like: { climb_id: string }) => like.climb_id));
+    const favoriteIds = new Set((data ?? []).map((like: { mountain_id: string }) => like.mountain_id));
     setFavorites(favoriteIds);
     setLoadingFavorites(false);
   };
@@ -190,11 +189,156 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  if (authLoading || loadingFavorites) {
+  // 未ログイン時はお気に入り機能をスキップ
+  if (authLoading) {
     return (
       <div className="py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <p>お気に入りを読み込み中...</p>
+          <p>読み込み中...</p>
+        </div>
+      </div>
+    );
+  }
+  if (!user) {
+    // お気に入り機能なしで山一覧のみ表示
+    return (
+      <div className="py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 sm:text-4xl">
+              日本百名山一覧
+            </h1>
+            <p className="mt-4 text-lg text-gray-600">
+              深田久弥が選定した日本を代表する100座の山々
+            </p>
+          </div>
+          <SearchFilter onSearch={setSearchQuery} onFilterChange={setFilters} />
+          {/* 検索・ソート・ページネーション・山一覧部分のみ表示（お気に入りボタン非表示） */}
+          {/* ...既存の山一覧表示部分を流用... */}
+          <div className="mb-4 flex justify-between items-center">
+            <p className="text-sm text-gray-600">
+              {filteredMountains.length} 件の山が見つかりました
+              {debouncedSearchQuery && ` (「${debouncedSearchQuery}」で検索)`}
+              {totalPages > 1 && (
+                <span className="ml-2">
+                  (ページ {currentPage}/{totalPages})
+                </span>
+              )}
+            </p>
+            {totalPages > 1 && (
+              <div className="text-sm text-gray-600">
+                {startIndex + 1}-{Math.min(endIndex, filteredMountains.length)} 件を表示中
+              </div>
+            )}
+          </div>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {currentMountains.map((mountain) => (
+              <Link
+                key={mountain.id}
+                href={`/mountains/${mountain.id}`}
+                className="block group"
+              >
+                <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 relative">
+                  {/* 山の画像 */}
+                  <div className="h-48 bg-gradient-to-br from-green-400 to-blue-500"></div>
+                  <div className="p-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <h2 className="text-xl font-semibold text-gray-900 group-hover:text-indigo-600">
+                        {mountain.name}
+                      </h2>
+                      <span className="text-sm text-gray-600">
+                        {mountain.elevation}m
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-2">
+                      {mountain.prefecture}
+                    </p>
+                    <div className="flex items-center space-x-2">
+                      {mountain.difficulty_level && (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          {mountain.difficulty_level}
+                        </span>
+                      )}
+                      {mountain.best_season && (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          {mountain.best_season}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+          {/* ページネーション */}
+          {totalPages > 1 && (
+            <div className="mt-8 flex justify-center">
+              <nav className="inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                <button
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className={`relative inline-flex items-center px-2 py-2 rounded-l-md border text-sm font-medium ${
+                    currentPage === 1
+                      ? 'bg-gray-50 border-gray-300 text-gray-400 cursor-not-allowed'
+                      : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                  }`}
+                >
+                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter(page => {
+                    return Math.abs(page - currentPage) <= 2 || page === 1 || page === totalPages;
+                  })
+                  .map((page, index, array) => {
+                    const showEllipsis = index > 0 && page - array[index - 1] > 1;
+                    return (
+                      <>
+                        {showEllipsis && (
+                          <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                            ...
+                          </span>
+                        )}
+                        <button
+                          onClick={() => goToPage(page)}
+                          className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                            currentPage === page
+                              ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
+                              : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      </>
+                    );
+                  })}
+                <button
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className={`relative inline-flex items-center px-2 py-2 rounded-r-md border text-sm font-medium ${
+                    currentPage === totalPages
+                      ? 'bg-gray-50 border-gray-300 text-gray-400 cursor-not-allowed'
+                      : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                  }`}
+                >
+                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </nav>
+            </div>
+          )}
+          {/* 結果がない場合 */}
+          {filteredMountains.length === 0 && !isLoading && (
+            <div className="text-center py-12">
+              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <h3 className="mt-2 text-sm font-medium text-gray-900">結果が見つかりません</h3>
+              <p className="mt-1 text-sm text-gray-500">検索条件を変更してお試しください。</p>
+            </div>
+          )}
         </div>
       </div>
     );

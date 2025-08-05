@@ -38,6 +38,12 @@ export default function Header() {
                 山一覧
               </Link>
               <Link
+                href="/public-plans"
+                className="inline-flex items-center px-1 pt-1 text-gray-900 hover:text-gray-600"
+              >
+                みんなの計画
+              </Link>
+              <Link
                 href="/public-climbs"
                 className="inline-flex items-center px-1 pt-1 text-gray-900 hover:text-gray-600"
               >

@@ -20,13 +20,53 @@ export interface Plan {
   updated_at?: string;
 }
 
-// 表示用の登山計画（山の名前込み）
 export interface PlanWithMountain extends Plan {
   mountain_name?: string;
   user?: {
     id: string;
     display_name?: string;
   };
+  like_count?: number;
+}
+
+/**
+ * 公開されている登山計画を取得（like_count含む）
+ */
+export async function getPublicPlans(limit: number = 50): Promise<PlanWithMountain[]> {
+  try {
+    const { data, error } = await supabase
+      .from('plans')
+      .select(`
+        *,
+        mountains (name),
+        users (id, display_name),
+        plan_favorites(count)
+      `)
+      .eq('is_public', true)
+      .order('published_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('公開登山計画取得エラー:', error);
+      return [];
+    }
+
+    const result = (data || []).map(plan => ({
+      ...plan,
+      mountain_name: Array.isArray(plan.mountains) 
+        ? plan.mountains[0]?.name 
+        : plan.mountains?.name || '不明',
+      user: Array.isArray(plan.users)
+        ? plan.users[0]
+        : plan.users,
+      like_count: Array.isArray(plan.plan_favorites) ? plan.plan_favorites[0]?.count || 0 : 0
+    }));
+
+    return result;
+  } catch (error) {
+    console.error('公開登山計画取得例外:', error);
+    return [];
+  }
 }
 
 /**
@@ -116,43 +156,7 @@ export async function getUserPlans(userId: string): Promise<PlanWithMountain[]> 
   }
 }
 
-/**
- * 公開されている登山計画を取得
- */
-export async function getPublicPlans(limit: number = 20): Promise<PlanWithMountain[]> {
-  try {
-    const { data, error } = await supabase
-      .from('plans')
-      .select(`
-        *,
-        mountains (name),
-        users (id, display_name)
-      `)
-      .eq('is_public', true)
-      .order('published_at', { ascending: false })
-      .limit(limit);
 
-    if (error) {
-      console.error('公開登山計画取得エラー:', error);
-      return [];
-    }
-
-    const result = (data || []).map(plan => ({
-      ...plan,
-      mountain_name: Array.isArray(plan.mountains) 
-        ? plan.mountains[0]?.name 
-        : plan.mountains?.name || '不明',
-      user: Array.isArray(plan.users)
-        ? plan.users[0]
-        : plan.users
-    }));
-
-    return result;
-  } catch (error) {
-    console.error('公開登山計画取得例外:', error);
-    return [];
-  }
-}
 
 /**
  * 特定の山の公開登山計画を取得

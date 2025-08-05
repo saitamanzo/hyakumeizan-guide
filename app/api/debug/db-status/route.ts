@@ -11,7 +11,7 @@ export async function GET() {
     console.log('🔍 データベース構造を確認中...');
     
     // テーブルの存在確認
-    const tables = ['climbs', 'climb_photos', 'likes', 'climbing_plans', 'mountains', 'users'];
+    const tables = ['climbs', 'climb_photos', 'climb_favorites', 'climbing_plans', 'plan_favorites', 'mountain_favorites', 'mountains', 'users'];
     const tableStatus: Record<string, {
       exists: boolean;
       hasData?: boolean;

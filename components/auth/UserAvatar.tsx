@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from './AuthProvider';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -8,10 +8,25 @@ import Image from 'next/image';
 export default function UserAvatar() {
   const { user, signOut, loading } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // 認証状態の監視
   }, [user, loading]);
+
+  // ドロップダウン外クリックで閉じる
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [dropdownOpen]);
 
   if (loading) {
     return (
@@ -35,10 +50,12 @@ export default function UserAvatar() {
   };
 
   return (
-    <div className="relative">
+    <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setDropdownOpen(!dropdownOpen)}
         className="flex items-center space-x-2 text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        aria-haspopup="true"
+        aria-expanded={dropdownOpen}
       >
         {user.user_metadata?.avatar_url ? (
           <Image
@@ -64,27 +81,32 @@ export default function UserAvatar() {
       </button>
 
       {dropdownOpen && (
-        <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
-          <div className="px-4 py-2 text-sm text-gray-500 border-b">
-            {user.email}
-          </div>
+        <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg py-1 z-50 border border-gray-200">
+          <div className="px-4 py-2 text-xs text-gray-500 border-b">{user.email}</div>
           <Link
             href="/profile"
-            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition"
             onClick={() => setDropdownOpen(false)}
           >
             プロフィール
           </Link>
           <Link
+            href="/climbs"
+            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition"
+            onClick={() => setDropdownOpen(false)}
+          >
+            登山記録
+          </Link>
+          <Link
             href="/plans"
-            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition"
             onClick={() => setDropdownOpen(false)}
           >
             登山計画
           </Link>
           <Link
             href="/favorites"
-            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition"
             onClick={() => setDropdownOpen(false)}
           >
             お気に入り
@@ -92,7 +114,7 @@ export default function UserAvatar() {
           <hr className="my-1" />
           <button
             onClick={handleSignOut}
-            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition"
           >
             ログアウト
           </button>

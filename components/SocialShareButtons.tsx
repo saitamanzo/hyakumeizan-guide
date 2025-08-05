@@ -42,9 +42,9 @@ export default function SocialShareButtons({
 
   // サイズ設定
   const sizeClasses = {
-    small: 'p-2 text-sm',
-    medium: 'p-3 text-base',
-    large: 'p-4 text-lg'
+    small: 'p-1 text-xs',
+    medium: 'p-2 text-sm',
+    large: 'p-3 text-base'
   };
 
   const iconSizeClasses = {
