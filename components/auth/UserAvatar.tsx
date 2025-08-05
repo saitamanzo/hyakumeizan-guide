@@ -91,18 +91,18 @@ export default function UserAvatar() {
             プロフィール
           </Link>
           <Link
-            href="/climbs"
-            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition"
-            onClick={() => setDropdownOpen(false)}
-          >
-            登山記録
-          </Link>
-          <Link
             href="/plans"
             className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition"
             onClick={() => setDropdownOpen(false)}
           >
             登山計画
+          </Link>
+          <Link
+            href="/climbs"
+            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition"
+            onClick={() => setDropdownOpen(false)}
+          >
+            登山記録
           </Link>
           <Link
             href="/favorites"
