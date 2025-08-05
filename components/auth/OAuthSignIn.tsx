@@ -7,8 +7,8 @@ const Button = ({ children, className, ...props }: React.ButtonHTMLAttributes<HT
     {...props}
     className={
       [
-        "w-full flex items-center justify-center gap-2 py-3 px-4 rounded-md border-2 border-red-500 bg-white text-red-600 font-bold text-lg shadow-sm transition-all duration-150",
-        "hover:bg-red-50 hover:shadow-lg hover:border-red-600 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-2",
+        "w-full flex items-center justify-center gap-2 py-3 px-4 rounded-md border-2 border-blue-900 bg-white text-blue-900 font-bold text-lg shadow-sm transition-all duration-150",
+        "hover:bg-blue-900 hover:text-white hover:shadow-lg hover:border-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-900 focus:ring-offset-2",
         className
       ].filter(Boolean).join(' ')
     }
