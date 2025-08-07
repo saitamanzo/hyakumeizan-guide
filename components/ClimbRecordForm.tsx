@@ -1,14 +1,16 @@
 import React from 'react';
 import type { RecordData } from './useClimbRecords';
+import type { UploadedPhoto } from './PhotoUpload';
+import Button from './ui/Button';
 
 interface ClimbRecordFormProps {
   record: RecordData;
   setRecord: (r: RecordData) => void;
   onSave: () => void;
   saving: boolean;
-  photos: any[];
-  setPhotos: (p: any[]) => void;
-  user: any;
+  photos: UploadedPhoto[];
+  setPhotos: (p: UploadedPhoto[]) => void;
+  user: unknown;
   loading: boolean;
   show: boolean;
   onClose: () => void;
@@ -19,9 +21,6 @@ const ClimbRecordForm: React.FC<ClimbRecordFormProps> = ({
   setRecord,
   onSave,
   saving,
-  photos,
-  setPhotos,
-  user,
   loading,
   show,
   onClose
@@ -40,10 +39,12 @@ const ClimbRecordForm: React.FC<ClimbRecordFormProps> = ({
             required
           />
           {/* 他の入力項目もここに追加 */}
-          <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded" disabled={saving || loading}>
+          <Button type="submit" variant="primary" disabled={saving || loading}>
             保存
-          </button>
-          <button type="button" className="ml-2" onClick={onClose}>キャンセル</button>
+          </Button>
+          <Button type="button" variant="secondary" className="ml-2" onClick={onClose}>
+            キャンセル
+          </Button>
         </form>
       </div>
     </div>

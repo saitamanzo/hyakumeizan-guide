@@ -1,5 +1,6 @@
 import { createClient } from './supabase/client';
 import type { Plan, PlanWithMountain } from '../types/plan';
+export type { Plan, PlanWithMountain } from '../types/plan';
 const supabase = createClient();
 
 /**

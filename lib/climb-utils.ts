@@ -1,5 +1,6 @@
 import { createClient } from './supabase/client';
 import type { ClimbPhoto, ClimbRecord, ClimbRecordWithMountain } from '../types/climb';
+export type { ClimbRecord, ClimbRecordWithMountain } from '../types/climb';
 const supabase = createClient();
 
 /**
@@ -86,15 +87,22 @@ export async function getUserClimbRecords(userId: string): Promise<ClimbRecordWi
       return [];
     }
 
-    const result = (data || []).map(record => ({
-      ...record,
-      mountain_name: Array.isArray(record.mountains) 
-        ? record.mountains[0]?.name 
-        : record.mountains?.name || '不明',
-      // 写真データをソートして追加
-      photos: (record.climb_photos || [])
-        .sort((a: ClimbPhoto, b: ClimbPhoto) => (a.sort_order || 0) - (b.sort_order || 0))
-    }));
+    const result = (data || []).map(record => {
+      let mountain_name = '不明';
+      const mountains = record.mountains as unknown;
+      if (Array.isArray(mountains)) {
+        mountain_name = (mountains[0] && typeof mountains[0] === 'object' && 'name' in mountains[0]) ? (mountains[0] as { name?: string }).name || '不明' : '不明';
+      } else if (mountains && typeof mountains === 'object' && 'name' in mountains) {
+        mountain_name = (mountains as { name?: string }).name || '不明';
+      }
+      return {
+        ...record,
+        mountain_name,
+        // 写真データをソートして追加
+        photos: (record.climb_photos || [])
+          .sort((a: ClimbPhoto, b: ClimbPhoto) => (a.sort_order || 0) - (b.sort_order || 0))
+      };
+    });
 
     console.log('getUserClimbRecords: 成功 -', result.length, '件取得');
     console.log('写真付き記録:', result.filter(r => r.photos && r.photos.length > 0).length, '件');
