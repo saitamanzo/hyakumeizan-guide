@@ -125,6 +125,8 @@ export default function PhotoGallery({
                 fill
                 className="object-cover"
                 sizes="(max-width: 768px) 50vw, (max-width: 1024px) 25vw, 16vw"
+                priority={index === 0}
+                loading={index === 0 ? undefined : "lazy"}
               />
               
               {/* ホバー時のオーバーレイ */}

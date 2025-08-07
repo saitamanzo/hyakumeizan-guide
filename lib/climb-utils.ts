@@ -1,42 +1,6 @@
 import { createClient } from './supabase/client';
+import type { ClimbPhoto, ClimbRecord, ClimbRecordWithMountain } from '../types/climb';
 const supabase = createClient();
-
-// 写真データの型定義
-export interface ClimbPhoto {
-  id: string;
-  storage_path: string;
-  thumbnail_path?: string;
-  caption?: string;
-  sort_order?: number;
-}
-
-
-// 基本的な登山記録の型定義（データベーススキーマに合わせて）
-export interface ClimbRecord {
-  id?: string;
-  user_id: string;
-  mountain_id: string;
-  route_id?: string;
-}
-
-// 表示用の登山記録（山の名前・写真・ユーザー・いいね数込み）
-export interface ClimbRecordWithMountain extends ClimbRecord {
-  mountain_name?: string;
-  photos?: ClimbPhoto[];
-  user?: {
-    id: string;
-    display_name?: string;
-  };
-  like_count?: number;
-  notes?: string;
-  published_at?: string;
-  difficulty_rating?: number;
-  climb_date?: string;
-  weather_conditions?: string;
-  is_public?: boolean;
-  created_at?: string;
-}
-
 
 /**
  * 登山記録を保存
@@ -95,7 +59,14 @@ export async function getUserClimbRecords(userId: string): Promise<ClimbRecordWi
     const { data, error } = await supabase
       .from('climbs')
       .select(`
-        *,
+        id,
+        user_id,
+        mountain_id,
+        climb_date,
+        notes,
+        weather_conditions,
+        difficulty_rating,
+        is_public,
         mountains (name),
         climb_photos (
           id,
