@@ -1,64 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import WeatherApiStatus from './WeatherApiStatus';
-import { getElevation, type ElevationResult } from '@/lib/elevation';
-
-interface WeatherData {
-  main: {
-    temp: number;
-    feels_like: number;
-    humidity: number;
-    pressure: number;
-  };
-  weather: Array<{
-    main: string;
-    description: string;
-    icon: string;
-  }>;
-  wind: {
-    speed: number;
-    deg: number;
-  };
-  visibility: number;
-  name: string;
-}
-
-interface ForecastData {
-  list: Array<{
-    dt: number;
-    main: {
-      temp: number;
-      temp_min: number;
-      temp_max: number;
-      humidity: number;
-    };
-    weather: Array<{
-      main: string;
-      description: string;
-      icon: string;
-    }>;
-    wind: {
-      speed: number;
-      deg: number;
-    };
-    dt_txt: string;
-  }>;
-}
-
-interface DailyForecast {
-  date: string;
-  dayName: string;
-  temp_min: number;
-  temp_max: number;
-  weather: {
-    main: string;
-    description: string;
-    icon: string;
-  };
-  humidity: number;
-  wind_speed: number;
-}
+import { useWeatherInfo } from '@/hooks/useWeatherInfo';
 
 interface WeatherInfoProps {
   latitude: number;
@@ -67,356 +11,76 @@ interface WeatherInfoProps {
   elevation?: number;
 }
 
+const getWeatherIcon = (iconCode: string) => {
+  const iconMap: { [key: string]: string } = {
+    '01d': '☀️', '01n': '🌙',
+    '02d': '⛅', '02n': '☁️',
+    '03d': '☁️', '03n': '☁️',
+    '04d': '☁️', '04n': '☁️',
+    '09d': '🌧️', '09n': '🌧️',
+    '10d': '🌦️', '10n': '🌦️',
+    '11d': '⛈️', '11n': '⛈️',
+    '13d': '❄️', '13n': '❄️',
+    '50d': '�️', '50n': '🌫️'
+  };
+  return iconMap[iconCode] || '🌤️';
+};
+
+const getWindDirection = (deg: number) => {
+  const directions = ['北', '北北東', '北東', '東北東', '東', '東南東', '南東', '南南東', '南', '南南西', '南西', '西南西', '西', '西北西', '北西', '北北西'];
+  return directions[Math.round(deg / 22.5) % 16];
+};
+
 export default function WeatherInfo({ latitude, longitude, mountainName, elevation }: WeatherInfoProps) {
-  const [weather, setWeather] = useState<WeatherData | null>(null);
-  const [forecast, setForecast] = useState<DailyForecast[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'current' | 'forecast'>('current');
-  const [elevationData, setElevationData] = useState<ElevationResult | { error: string } | null>(null);
-  const [elevationLoading, setElevationLoading] = useState<boolean>(false);
 
-  useEffect(() => {
-    console.log('🏔️ WeatherInfo useEffect triggered for:', { latitude, longitude, elevation, mountainName });
-    
-    // 標高データの取得（Google Maps APIから座標ベースで取得）
-    const fetchElevation = async () => {
-      console.log('📡 Starting elevation fetch from Google Maps API...');
-      setElevationLoading(true);
-      try {
-        // 常にGoogle Maps APIまたは推定値を使用（データベースの山の標高は使わない）
-        console.log('📡 Fetching elevation from coordinates using Google Maps API...');
-        const result = await getElevation(latitude, longitude);
-        console.log('✅ Elevation fetch completed:', result);
-        setElevationData(result);
-      } catch (error) {
-        console.error('❌ Elevation fetch error:', error);
-        
-        // エラーの詳細情報をログ出力
-        if (error instanceof Error) {
-          console.error('Error details:', {
-            name: error.name,
-            message: error.message,
-            stack: error.stack?.substring(0, 200) + '...'
-          });
-        }
-        
-        // エラーの場合は簡易推定を表示
-        setElevationData({
-          elevation: 500, // デフォルト値
-          lat: latitude,
-          lng: longitude,
-          source: 'estimated'
-        });
-      } finally {
-        setElevationLoading(false);
-      }
-    };
-
-    fetchElevation();
-    
-    const fetchWeather = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        // デモ用の天気データ（実際のAPIキーがない場合）
-        // 位置に応じて少し変化させる
-        const tempVariation = Math.sin(latitude * 0.1) * 5 + Math.cos(longitude * 0.1) * 3;
-        const humidityVariation = Math.sin(latitude * 0.05) * 15;
-        
-        const demoWeatherData: WeatherData = {
-          main: {
-            temp: 15.5 + tempVariation,
-            feels_like: 12.3 + tempVariation - 1,
-            humidity: Math.max(30, Math.min(90, 65 + humidityVariation)),
-            pressure: 1013 + Math.sin(latitude * 0.1) * 20
-          },
-          weather: [{
-            main: "Clouds",
-            description: "曇り",
-            icon: "04d"
-          }],
-          wind: {
-            speed: 3.2 + Math.sin(longitude * 0.1) * 2,
-            deg: (220 + latitude + longitude) % 360
-          },
-          visibility: 10000,
-          name: mountainName
-        };
-
-        // デモ用の7日間予報データ（位置に応じて変化）
-        const tempBase = 15 + tempVariation;
-
-        // 実際のAPI呼び出しかデモモードかを判定
-        const useRealAPI = process.env.NEXT_PUBLIC_USE_REAL_WEATHER_API === 'true' && 
-                          process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY && 
-                          process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY !== 'demo_key_for_development';
-
-        if (useRealAPI) {
-          console.log('🌐 Using real OpenWeatherMap API');
-          
-          try {
-            // 現在の天気を取得
-            const currentResponse = await fetch(
-              `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY}&units=metric&lang=ja`
-            );
-            
-            if (!currentResponse.ok) {
-              if (currentResponse.status === 401) {
-                throw new Error('OpenWeatherMap APIキーが無効です。APIキーを確認してください。');
-              } else if (currentResponse.status === 429) {
-                throw new Error('API呼び出し制限に達しました。しばらくお待ちください。');
-              } else {
-                throw new Error(`天気データの取得に失敗しました (${currentResponse.status}): ${currentResponse.statusText}`);
-              }
-            }
-            
-            const currentData = await currentResponse.json();
-            
-            // 地名の日本語化（APIから取得した地名を使用、なければNominatimで取得）
-            let displayName = currentData.name;
-            if (!displayName || displayName === mountainName) {
-              try {
-                const geocodeResponse = await fetch(
-                  `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1&accept-language=ja`
-                );
-                if (geocodeResponse.ok) {
-                  const geocodeData = await geocodeResponse.json();
-                  displayName = geocodeData.display_name?.split(',')[0] || currentData.name || mountainName;
-                }
-              } catch (geocodeError) {
-                console.warn('地名取得エラー:', geocodeError);
-              }
-            }
-            
-            setWeather({
-              ...currentData,
-              name: displayName
-            });
-
-            // 5日間予報を取得
-            try {
-              const forecastResponse = await fetch(
-                `https://api.openweathermap.org/data/2.5/forecast?lat=${latitude}&lon=${longitude}&appid=${process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY}&units=metric&lang=ja`
-              );
-              
-              if (forecastResponse.ok) {
-                const forecastData: ForecastData = await forecastResponse.json();
-                const dailyForecast = processForecastData(forecastData);
-                setForecast(dailyForecast);
-              } else {
-                console.warn('予報データの取得に失敗:', forecastResponse.status, forecastResponse.statusText);
-                // 予報取得に失敗した場合はデモデータを使用
-                setForecast(generateDemoForecast(tempBase, humidityVariation, longitude));
-              }
-            } catch (forecastError) {
-              console.warn('予報データの取得エラー:', forecastError);
-              // 予報取得に失敗した場合はデモデータを使用
-              setForecast(generateDemoForecast(tempBase, humidityVariation, longitude));
-            }
-            
-          } catch (apiError) {
-            console.error('Weather API Error:', apiError);
-            // API取得に失敗した場合は完全にデモモードにフォールバック
-            console.log('🎭 Falling back to demo mode due to API error');
-            setWeather(demoWeatherData);
-            setForecast(generateDemoForecast(tempBase, humidityVariation, longitude));
-            // ユーザーにエラーを通知（ただし、表示は継続）
-            setError(`Weather API Error: ${apiError instanceof Error ? apiError.message : 'Unknown error'}`);
-          }
-          
-        } else {
-          console.log('🎭 Using demo weather data mode');
-          // デモデータを使用
-          setTimeout(() => {
-            setWeather(demoWeatherData);
-            setForecast(generateDemoForecast(tempBase, humidityVariation, longitude));
-          }, 500);
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : '天気データの取得に失敗しました');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchWeather();
-  }, [latitude, longitude, mountainName, elevation, setError]); // generateDemoForecastは内部関数なので依存配列から除外
-
-  // 5日間予報データを日ごとに集約する関数
-  const processForecastData = (data: ForecastData): DailyForecast[] => {
-    const dailyData: { 
-      [key: string]: {
-        date: string;
-        temps: number[];
-        weather: { main: string; description: string; icon: string };
-        humidity: number;
-        wind_speed: number;
-      }
-    } = {};
-    
-    data.list.forEach(item => {
-      const date = item.dt_txt.split(' ')[0];
-      
-      if (!dailyData[date]) {
-        dailyData[date] = {
-          date,
-          temps: [],
-          weather: item.weather[0],
-          humidity: item.main.humidity,
-          wind_speed: item.wind.speed
-        };
-      }
-      
-      dailyData[date].temps.push(item.main.temp);
-    });
-
-    return Object.values(dailyData).slice(0, 7).map((day, index) => {
-      const dayDate = new Date(day.date);
-      let dayName;
-      
-      if (index === 0) {
-        dayName = '今日';
-      } else if (index === 1) {
-        dayName = '明日';
-      } else {
-        dayName = dayDate.toLocaleDateString('ja-JP', { weekday: 'short' });
-      }
-
-      // 日付の表示形式を改善
-      const displayDate = dayDate.toLocaleDateString('ja-JP', { 
-        month: 'numeric', 
-        day: 'numeric'
-      });
-
-      return {
-        date: day.date,
-        dayName: `${dayName} ${displayDate}`,
-        temp_min: Math.round(Math.min(...day.temps)),
-        temp_max: Math.round(Math.max(...day.temps)),
-        weather: day.weather,
-        humidity: day.humidity,
-        wind_speed: day.wind_speed
-      };
-    });
+  // キーボード操作対応: Tab切り替え
+  const handleTabKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, tab: 'current' | 'forecast') => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      setActiveTab(tab);
+    }
   };
-
-  // デモ用の7日間予報データを生成する関数
-  const generateDemoForecast = (tempBase: number, humidityVar: number, lng: number): DailyForecast[] => {
-    const today = new Date();
-    
-    return [
-      {
-        date: today.toISOString().split('T')[0],
-        dayName: `今日 ${today.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })}`,
-        temp_min: Math.round(tempBase - 3),
-        temp_max: Math.round(tempBase + 3),
-        weather: { main: "Clouds", description: "曇り", icon: "04d" },
-        humidity: Math.max(30, Math.min(90, 65 + humidityVar)),
-        wind_speed: 3.2 + Math.sin(lng * 0.1) * 2
-      },
-      {
-        date: new Date(Date.now() + 86400000).toISOString().split('T')[0],
-        dayName: `明日 ${new Date(Date.now() + 86400000).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })}`,
-        temp_min: Math.round(tempBase - 5),
-        temp_max: Math.round(tempBase + 1),
-        weather: { main: "Rain", description: "小雨", icon: "10d" },
-        humidity: Math.max(30, Math.min(90, 80 + humidityVar * 0.5)),
-        wind_speed: 4.1 + Math.sin(lng * 0.15) * 1.5
-      },
-      {
-        date: new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0],
-        dayName: `${new Date(Date.now() + 86400000 * 2).toLocaleDateString('ja-JP', { weekday: 'short' })} ${new Date(Date.now() + 86400000 * 2).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })}`,
-        temp_min: Math.round(tempBase - 7),
-        temp_max: Math.round(tempBase - 1),
-        weather: { main: "Clear", description: "晴れ", icon: "01d" },
-        humidity: Math.max(30, Math.min(90, 55 + humidityVar * 0.3)),
-        wind_speed: 2.8 + Math.sin(lng * 0.08) * 1
-      },
-      {
-        date: new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0],
-        dayName: `${new Date(Date.now() + 86400000 * 3).toLocaleDateString('ja-JP', { weekday: 'short' })} ${new Date(Date.now() + 86400000 * 3).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })}`,
-        temp_min: Math.round(tempBase - 4),
-        temp_max: Math.round(tempBase + 4),
-        weather: { main: "Clouds", description: "曇り時々晴れ", icon: "03d" },
-        humidity: Math.max(30, Math.min(90, 60 + humidityVar * 0.4)),
-        wind_speed: 3.5 + Math.sin(lng * 0.12) * 1.2
-      },
-      {
-        date: new Date(Date.now() + 86400000 * 4).toISOString().split('T')[0],
-        dayName: `${new Date(Date.now() + 86400000 * 4).toLocaleDateString('ja-JP', { weekday: 'short' })} ${new Date(Date.now() + 86400000 * 4).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })}`,
-        temp_min: Math.round(tempBase - 6),
-        temp_max: Math.round(tempBase),
-        weather: { main: "Rain", description: "雨", icon: "09d" },
-        humidity: Math.max(30, Math.min(90, 85 + humidityVar * 0.2)),
-        wind_speed: 5.2 + Math.sin(lng * 0.18) * 2
-      },
-      {
-        date: new Date(Date.now() + 86400000 * 5).toISOString().split('T')[0],
-        dayName: `${new Date(Date.now() + 86400000 * 5).toLocaleDateString('ja-JP', { weekday: 'short' })} ${new Date(Date.now() + 86400000 * 5).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })}`,
-        temp_min: Math.round(tempBase - 2),
-        temp_max: Math.round(tempBase + 6),
-        weather: { main: "Clear", description: "快晴", icon: "01d" },
-        humidity: Math.max(30, Math.min(90, 45 + humidityVar * 0.3)),
-        wind_speed: 2.1 + Math.sin(lng * 0.05) * 0.8
-      },
-      {
-        date: new Date(Date.now() + 86400000 * 6).toISOString().split('T')[0],
-        dayName: `${new Date(Date.now() + 86400000 * 6).toLocaleDateString('ja-JP', { weekday: 'short' })} ${new Date(Date.now() + 86400000 * 6).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })}`,
-        temp_min: Math.round(tempBase - 1),
-        temp_max: Math.round(tempBase + 7),
-        weather: { main: "Clear", description: "晴れ", icon: "02d" },
-        humidity: Math.max(30, Math.min(90, 50 + humidityVar * 0.4)),
-        wind_speed: 3.0 + Math.sin(lng * 0.1) * 1.5
-      }
-    ];
-  };
-
-  const getWeatherIcon = (iconCode: string) => {
-    // シンプルな天気アイコンマッピング
-    const iconMap: { [key: string]: string } = {
-      '01d': '☀️', '01n': '🌙',
-      '02d': '⛅', '02n': '☁️',
-      '03d': '☁️', '03n': '☁️',
-      '04d': '☁️', '04n': '☁️',
-      '09d': '🌧️', '09n': '🌧️',
-      '10d': '🌦️', '10n': '🌦️',
-      '11d': '⛈️', '11n': '⛈️',
-      '13d': '❄️', '13n': '❄️',
-      '50d': '🌫️', '50n': '🌫️'
-    };
-    return iconMap[iconCode] || '🌤️';
-  };
-
-  const getWindDirection = (deg: number) => {
-    const directions = ['北', '北北東', '北東', '東北東', '東', '東南東', '南東', '南南東', '南', '南南西', '南西', '西南西', '西', '西北西', '北西', '北北西'];
-    return directions[Math.round(deg / 22.5) % 16];
-  };
+  const {
+    weather,
+    forecast,
+    loading,
+    error,
+    elevationData,
+    elevationLoading,
+  } = useWeatherInfo({ latitude, longitude, mountainName, elevation });
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4" aria-busy="true" aria-live="polite">
         <div className="animate-pulse">
           <div className="flex items-center space-x-2 mb-2">
-            <div className="h-4 w-4 bg-gray-300 rounded"></div>
-            <div className="h-4 bg-gray-300 rounded w-16"></div>
+            <div className="h-4 w-4 bg-gray-300 rounded" />
+            <div className="h-4 bg-gray-300 rounded w-16" />
           </div>
-          <div className="h-6 bg-gray-300 rounded w-24 mb-2"></div>
-          <div className="h-4 bg-gray-300 rounded w-32"></div>
+          <div className="h-6 bg-gray-300 rounded w-24 mb-2" />
+          <div className="h-4 bg-gray-300 rounded w-32" />
+        </div>
+        {/* 予報タブのローディングスケルトン */}
+        <div className="mt-6 animate-pulse">
+          <div className="h-4 bg-gray-200 rounded w-24 mb-2" />
+          <div className="space-y-2">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-8 bg-gray-200 rounded w-full" />
+            ))}
+          </div>
         </div>
       </div>
     );
   }
 
-  if (error) {
+  if (error && !weather) {
     return (
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
         <div className="flex items-center space-x-2 text-red-600">
-          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
             <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
           </svg>
-          <span className="text-sm">{error}</span>
+          <span className="text-sm" role="alert">{error}</span>
         </div>
       </div>
     );
@@ -425,7 +89,7 @@ export default function WeatherInfo({ latitude, longitude, mountainName, elevati
   if (!weather) return null;
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4" role="region" aria-label="天気情報">
       {/* エラー表示 */}
       {error && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-md">
@@ -450,7 +114,7 @@ export default function WeatherInfo({ latitude, longitude, mountainName, elevati
       {/* タブナビゲーション */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-          <svg className="w-5 h-5 mr-2 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+          <svg className="w-5 h-5 mr-2 text-blue-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
             <path d="M5.5 16a3.5 3.5 0 01-.369-6.98 4 4 0 117.753-1.977A4.5 4.5 0 1113.5 16h-8z" />
           </svg>
           天気情報
@@ -465,24 +129,34 @@ export default function WeatherInfo({ latitude, longitude, mountainName, elevati
             </span>
           )}
         </h3>
-        <div className="flex bg-gray-100 rounded-lg p-1">
+        <div className="flex bg-gray-100 rounded-lg p-1" role="tablist" aria-label="天気情報タブ">
           <button
             onClick={() => setActiveTab('current')}
+            onKeyDown={e => handleTabKeyDown(e, 'current')}
             className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
               activeTab === 'current'
                 ? 'bg-white text-blue-600 shadow-sm'
                 : 'text-gray-600 hover:text-gray-900'
             }`}
+            role="tab"
+            aria-selected={activeTab === 'current'}
+            aria-controls="weather-current"
+            tabIndex={activeTab === 'current' ? 0 : -1}
           >
             現在
           </button>
           <button
             onClick={() => setActiveTab('forecast')}
+            onKeyDown={e => handleTabKeyDown(e, 'forecast')}
             className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
               activeTab === 'forecast'
                 ? 'bg-white text-blue-600 shadow-sm'
                 : 'text-gray-600 hover:text-gray-900'
             }`}
+            role="tab"
+            aria-selected={activeTab === 'forecast'}
+            aria-controls="weather-forecast"
+            tabIndex={activeTab === 'forecast' ? 0 : -1}
           >
             7日間予報
           </button>
@@ -528,7 +202,7 @@ export default function WeatherInfo({ latitude, longitude, mountainName, elevati
 
       {/* 現在の天気タブ */}
       {activeTab === 'current' && (
-        <div>
+        <div id="weather-current" role="tabpanel" aria-labelledby="weather-current-tab">
           <div className="flex items-center justify-between mb-3">
             <span className="text-sm text-gray-500">
               {new Date().toLocaleDateString('ja-JP', { 
@@ -607,7 +281,7 @@ export default function WeatherInfo({ latitude, longitude, mountainName, elevati
 
       {/* 7日間予報タブ */}
       {activeTab === 'forecast' && (
-        <div>
+        <div id="weather-forecast" role="tabpanel" aria-labelledby="weather-forecast-tab">
           <div className="text-sm text-gray-500 mb-4">
             今後7日間の天気予報（登山計画の参考にしてください）
           </div>
