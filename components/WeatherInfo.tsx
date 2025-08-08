@@ -11,11 +11,11 @@ interface WeatherData {
     humidity: number;
     pressure: number;
   };
-  weather: {
+  weather: Array<{
     main: string;
     description: string;
     icon: string;
-  }[];
+  }>;
   wind: {
     speed: number;
     deg: number;
@@ -25,7 +25,7 @@ interface WeatherData {
 }
 
 interface ForecastData {
-  list: {
+  list: Array<{
     dt: number;
     main: {
       temp: number;
@@ -33,17 +33,17 @@ interface ForecastData {
       temp_max: number;
       humidity: number;
     };
-    weather: {
+    weather: Array<{
       main: string;
       description: string;
       icon: string;
-    }[];
+    }>;
     wind: {
       speed: number;
       deg: number;
     };
     dt_txt: string;
-  }[];
+  }>;
 }
 
 interface DailyForecast {
@@ -70,11 +70,11 @@ interface WeatherInfoProps {
 export default function WeatherInfo({ latitude, longitude, mountainName, elevation }: WeatherInfoProps) {
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [forecast, setForecast] = useState<DailyForecast[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'current' | 'forecast'>('current');
-  const [elevationData, setElevationData] = useState<ElevationResult | null>(null);
-  const [elevationLoading, setElevationLoading] = useState(false);
+  const [elevationData, setElevationData] = useState<ElevationResult | { error: string } | null>(null);
+  const [elevationLoading, setElevationLoading] = useState<boolean>(false);
 
   useEffect(() => {
     console.log('🏔️ WeatherInfo useEffect triggered for:', { latitude, longitude, elevation, mountainName });
@@ -104,8 +104,9 @@ export default function WeatherInfo({ latitude, longitude, mountainName, elevati
         // エラーの場合は簡易推定を表示
         setElevationData({
           elevation: 500, // デフォルト値
-          source: 'estimated',
-          accuracy: 'low'
+          lat: latitude,
+          lng: longitude,
+          source: 'estimated'
         });
       } finally {
         setElevationLoading(false);
@@ -455,7 +456,7 @@ export default function WeatherInfo({ latitude, longitude, mountainName, elevati
           天気情報
           {elevationData && (
             <span className="ml-2 text-sm font-normal text-gray-600">
-              (座標地点標高 {elevationData.elevation.toLocaleString()}m)
+              {(elevationData && 'elevation' in elevationData) ? `(座標地点標高 ${elevationData.elevation.toLocaleString()}m)` : null}
             </span>
           )}
           {elevationLoading && (
@@ -496,34 +497,30 @@ export default function WeatherInfo({ latitude, longitude, mountainName, elevati
               <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
               </svg>
-              <span className="font-medium">座標地点の標高: {elevationData.elevation.toLocaleString()}m</span>
+              <span className="font-medium">
+                {elevationData && 'elevation' in elevationData
+                  ? `座標地点の標高: ${elevationData.elevation.toLocaleString()}m`
+                  : elevationData && 'error' in elevationData
+                  ? `標高取得エラー: ${elevationData.error}`
+                  : ''}
+              </span>
             </div>
             <div className="flex items-center space-x-2">
-              {elevationData.source === 'google' && (
+              {elevationData && 'source' in elevationData && elevationData.source === 'google' && (
                 <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
                   Google Maps API
                 </span>
               )}
-              {elevationData.source === 'estimated' && (
+              {elevationData && 'source' in elevationData && elevationData.source === 'estimated' && (
                 <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">
                   推定値
                 </span>
               )}
-              {elevationData.source === 'cache' && (
-                <span className="px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded-full">
-                  キャッシュ
-                </span>
-              )}
             </div>
           </div>
-          {elevationData.source === 'google' && (
+          {elevationData && 'source' in elevationData && elevationData.source === 'google' && (
             <p className="text-xs text-blue-600 mt-1">
               📍 この標高は座標地点（{latitude.toFixed(4)}, {longitude.toFixed(4)}）のGoogle Maps APIから取得した値です。
-            </p>
-          )}
-          {elevationData.source === 'estimated' && (
-            <p className="text-xs text-blue-600 mt-1">
-              ⚠️ これは推定値です。より正確な標高データを取得するにはGoogle Maps APIキーを設定してください。
             </p>
           )}
         </div>
@@ -595,7 +592,7 @@ export default function WeatherInfo({ latitude, longitude, mountainName, elevati
                 <p className="text-sm text-yellow-800 font-medium mb-1">登山時の注意</p>
                 <ul className="text-xs text-yellow-700 space-y-1">
                   <li>• 山頂付近は平地より気温が低くなります</li>
-                  {elevationData && elevationData.elevation > 1000 && (
+                  {elevationData && 'elevation' in elevationData && elevationData.elevation > 1000 && (
                     <li>• 標高{elevationData.elevation.toLocaleString()}mでは平地より約{Math.round((elevationData.elevation / 100) * 0.6)}°C低くなります</li>
                   )}
                   <li>• 天候は急変する可能性があります</li>

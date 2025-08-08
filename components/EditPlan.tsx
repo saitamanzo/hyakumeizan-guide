@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { updatePlan, Plan } from '@/lib/plan-utils';
+import { updatePlan } from '@/lib/plan-utils';
+import type { Plan } from '@/types/plan';
 
 interface EditPlanProps {
   plan: Plan & { mountain_name?: string };

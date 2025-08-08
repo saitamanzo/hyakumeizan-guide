@@ -1,8 +1,9 @@
 // 一時的なデータ挿入スクリプト
 // ※本番環境では使用しない
 
-const { createClient } = require('@supabase/supabase-js');
-require('dotenv').config({ path: '.env.local' });
+import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
+dotenv.config({ path: '.env.local' });
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -200,7 +201,7 @@ const sampleRoutes = [
 async function insertSampleData() {
   try {
     console.log('Inserting sample mountains...');
-    const { data: mountains, error: mountainError } = await supabase
+  const { error: mountainError } = await supabase
       .from('mountains')
       .insert(sampleMountains);
     
@@ -212,7 +213,7 @@ async function insertSampleData() {
     console.log('Mountains inserted successfully');
     
     console.log('Inserting sample routes...');
-    const { data: routes, error: routeError } = await supabase
+  const { error: routeError } = await supabase
       .from('routes')
       .insert(sampleRoutes);
     

@@ -4,7 +4,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { getUserPlans, deletePlan, updatePlanPublicStatus, PlanWithMountain, Plan } from '@/lib/plan-utils';
+import { getUserPlans, deletePlan, updatePlanPublicStatus, PlanWithMountain } from '@/lib/plan-utils';
+import type { Plan } from '@/types/plan';
 import { SocialShareButtonsCompact } from '@/components/SocialShareButtons';
 import EditPlan from '@/components/EditPlan';
 

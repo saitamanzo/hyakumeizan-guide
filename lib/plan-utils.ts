@@ -1,6 +1,6 @@
 import { createClient } from './supabase/client';
-import type { Plan, PlanWithMountain } from '../types/plan';
-export type { Plan, PlanWithMountain } from '../types/plan';
+import type { PlanWithMountain } from '../types/plan';
+export type { PlanWithMountain } from '../types/plan';
 const supabase = createClient();
 
 /**
@@ -19,26 +19,18 @@ export async function getPublicPlans(limit: number = 50): Promise<PlanWithMounta
       .eq('is_public', true)
       .order('published_at', { ascending: false })
       .limit(limit);
-
-    if (error) {
-      console.error('公開登山計画取得エラー:', error);
-      return [];
-    }
-
-    const result = (data || []).map(plan => ({
+    if (error) return [];
+    return (data || []).map(plan => ({
       ...plan,
-      mountain_name: Array.isArray(plan.mountains) 
-        ? plan.mountains[0]?.name 
+      mountain_name: Array.isArray(plan.mountains)
+        ? plan.mountains[0]?.name
         : plan.mountains?.name || '不明',
       user: Array.isArray(plan.users)
         ? plan.users[0]
         : plan.users,
       like_count: Array.isArray(plan.plan_favorites) ? plan.plan_favorites[0]?.count || 0 : 0
     }));
-
-    return result;
-  } catch (error) {
-    console.error('公開登山計画取得例外:', error);
+  } catch {
     return [];
   }
 }
@@ -73,22 +65,17 @@ export async function savePlan(
       route_plan: data.routePlan,
       equipment_list: data.equipmentList,
       notes: data.notes,
-      is_public: data.isPublic || false,
+      is_public: !!data.isPublic,
     };
-
     const { data: result, error } = await supabase
       .from('plans')
       .insert(plan)
       .select('id')
       .single();
-
-    if (error) {
-      return { success: false, error: error.message };
-    }
-
+    if (error) return { success: false, error: error.message };
     return { success: true, id: result.id };
-  } catch (error) {
-    return { success: false, error: String(error) };
+  } catch {
+    return { success: false, error: 'Unknown error' };
   }
 }
 
@@ -97,8 +84,6 @@ export async function savePlan(
  */
 export async function getUserPlans(userId: string): Promise<PlanWithMountain[]> {
   try {
-    console.log('getUserPlans: 開始 - userID:', userId);
-    
     const { data, error } = await supabase
       .from('plans')
       .select(`
@@ -107,25 +92,14 @@ export async function getUserPlans(userId: string): Promise<PlanWithMountain[]> 
       `)
       .eq('user_id', userId)
       .order('planned_date', { ascending: true });
-
-    console.log('getUserPlans: Supabase応答', { data: data?.length || 0, error });
-
-    if (error) {
-      console.error('登山計画取得エラー:', error);
-      return [];
-    }
-
-    const result = (data || []).map(plan => ({
+    if (error) return [];
+    return (data || []).map(plan => ({
       ...plan,
-      mountain_name: Array.isArray(plan.mountains) 
-        ? plan.mountains[0]?.name 
+      mountain_name: Array.isArray(plan.mountains)
+        ? plan.mountains[0]?.name
         : plan.mountains?.name || '不明'
     }));
-
-    console.log('getUserPlans: 成功 -', result.length, '件取得');
-    return result;
-  } catch (error) {
-    console.error('登山計画取得例外:', error);
+  } catch {
     return [];
   }
 }
@@ -147,25 +121,17 @@ export async function getPublicPlansByMountain(mountainId: string): Promise<Plan
       .eq('mountain_id', mountainId)
       .eq('is_public', true)
       .order('published_at', { ascending: false });
-
-    if (error) {
-      console.error('山別公開登山計画取得エラー:', error);
-      return [];
-    }
-
-    const result = (data || []).map(plan => ({
+    if (error) return [];
+    return (data || []).map(plan => ({
       ...plan,
-      mountain_name: Array.isArray(plan.mountains) 
-        ? plan.mountains[0]?.name 
+      mountain_name: Array.isArray(plan.mountains)
+        ? plan.mountains[0]?.name
         : plan.mountains?.name || '不明',
       user: Array.isArray(plan.users)
         ? plan.users[0]
         : plan.users
     }));
-
-    return result;
-  } catch (error) {
-    console.error('山別公開登山計画取得例外:', error);
+  } catch {
     return [];
   }
 }
@@ -174,18 +140,16 @@ export async function getPublicPlansByMountain(mountainId: string): Promise<Plan
  * 登山計画の公開状態を更新
  */
 export async function updatePlanPublicStatus(
-  planId: string, 
+  planId: string,
   isPublic: boolean
 ): Promise<boolean> {
   try {
     const { error } = await supabase
       .from('plans')
-      .update({ 
+      .update({
         is_public: isPublic,
-        // published_at はトリガーで自動設定される
       })
       .eq('id', planId);
-
     return !error;
   } catch {
     return false;
@@ -214,14 +178,10 @@ export async function updatePlan(
       .from('plans')
       .update(data)
       .eq('id', planId);
-
-    if (error) {
-      return { success: false, error: error.message };
-    }
-
+    if (error) return { success: false, error: error.message };
     return { success: true };
-  } catch (error) {
-    return { success: false, error: String(error) };
+  } catch {
+    return { success: false, error: 'Unknown error' };
   }
 }
 
@@ -234,7 +194,6 @@ export async function deletePlan(planId: string): Promise<boolean> {
       .from('plans')
       .delete()
       .eq('id', planId);
-
     return !error;
   } catch {
     return false;

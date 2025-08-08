@@ -1,18 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from './auth/AuthProvider';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
-import { getUserClimbRecords, saveClimbRecord, deleteClimbRecord } from '@/lib/climb-utils';
+import { saveClimbRecord } from '@/lib/climb-utils';
 import type { UploadedPhoto } from './PhotoUpload';
-import { getClimbPhotos, ClimbPhoto } from '@/lib/photo-utils';
-import { createClient } from '../lib/supabase/client';
-import LikeButton from './LikeButton';
-import { SocialShareButtonsCompact } from './SocialShareButtons';
-import { useClimbRecords, RecordData, SavedRecord } from './useClimbRecords';
-import ClimbRecordList from './ClimbRecordList';
+import { useClimbRecords, RecordData } from './useClimbRecords';
 import ClimbRecordForm from './ClimbRecordForm';
 
 
@@ -40,12 +34,7 @@ export default function ClimbRecord({ mountainName, mountainId }: ClimbRecordPro
   });
 
   // useClimbRecordsで記録データを管理
-  const {
-    savedRecords,
-    loadSavedRecords,
-    loading: recordsLoading,
-    setSavedRecords
-  } = useClimbRecords(mountainId, user, mountainName);
+  const { loadSavedRecords } = useClimbRecords(mountainId, user, mountainName);
 
   // ユーザーがログインしたときに保存済み記録を読み込む
   useEffect(() => {
@@ -156,71 +145,6 @@ export default function ClimbRecord({ mountainName, mountainId }: ClimbRecordPro
     }
   };
 
-  const difficultyOptions = [
-    { value: 'easy', label: '初級' },
-    { value: 'moderate', label: '中級' },
-    { value: 'hard', label: '上級' }
-  ];
-
-  const weatherOptions = [
-    '晴れ', '曇り', '雨', '雪', '霧', '風強', '雷'
-  ];
-
-  const handlePhotosChange = useCallback((newPhotos: UploadedPhoto[]) => {
-    setPhotos(newPhotos);
-  }, []);
-
-  // 記録の編集ハンドラー
-  const handleEditRecord = useCallback((savedRecord: SavedRecord) => {
-    // フォームに既存データを設定
-    setRecord({
-      date: savedRecord.date,
-      route: savedRecord.route,
-      duration: savedRecord.duration,
-      difficulty: savedRecord.difficulty,
-      weather: savedRecord.weather,
-      companions: savedRecord.companions,
-      notes: savedRecord.notes,
-      rating: savedRecord.rating
-    });
-    
-    // 既存の写真データも設定（編集機能として）
-    if (savedRecord.photos) {
-      const existingPhotos: UploadedPhoto[] = savedRecord.photos.map((photo) => ({
-        file: undefined, // 既存写真はファイルオブジェクトなし
-        preview: photo.thumbnail_path || photo.storage_path,
-        caption: photo.caption || '',
-        uploaded: true,
-        uploading: false,
-        error: undefined,
-        id: photo.id
-      }));
-      setPhotos(existingPhotos);
-    }
-    
-    setShowRecordForm(true);
-  }, []);
-
-  // 記録の削除ハンドラー
-  const handleDeleteRecord = useCallback(async (recordId: string) => {
-    if (!window.confirm('この登山記録を削除しますか？この操作は取り消せません。')) {
-      return;
-    }
-
-    try {
-      const success = await deleteClimbRecord(recordId);
-      if (success) {
-        alert('登山記録を削除しました');
-        // 記録一覧を再読み込み
-        // await loadSavedRecords(); // This line is removed as per the new_code
-      } else {
-        alert('登山記録の削除に失敗しました');
-      }
-    } catch (error) {
-      console.error('削除処理中のエラー:', error);
-      alert('削除中にエラーが発生しました');
-    }
-  }, []); // loadSavedRecords is removed as per the new_code
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">

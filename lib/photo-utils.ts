@@ -294,4 +294,4 @@ export const updatePhotoOrder = async (photoId: string, newOrder: number): Promi
     console.error('写真の並び順更新中にエラーが発生:', error);
     return false;
   }
-};
+}

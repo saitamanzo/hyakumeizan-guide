@@ -21,8 +21,8 @@ export default function PhotoGallery({
 }: PhotoGalleryProps) {
   const [photos, setPhotos] = useState<ClimbPhoto[]>([]);
   const [selectedPhoto, setSelectedPhoto] = useState<ClimbPhoto | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
 
   const sizeClasses = {
     small: 'h-16 w-16',

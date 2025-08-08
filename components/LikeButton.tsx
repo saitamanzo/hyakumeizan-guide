@@ -67,9 +67,9 @@ export default function LikeButton({
       try {
         console.log('🔄 いいね数取得開始:', { type, contentId, userId: user?.id });
         if (type === 'climb') {
-          const data = await getClimbLikeCount(contentId, user?.id);
-          console.log('✅ いいね数取得成功:', data);
-          setLikeData(data);
+          const count = await getClimbLikeCount(contentId);
+          console.log('✅ いいね数取得成功:', count);
+          setLikeData({ count, user_has_liked: false });
         } else {
           const data = await getPlanFavoriteCount(contentId, user?.id);
           console.log('✅ いいね数取得成功:', data);
@@ -104,29 +104,28 @@ export default function LikeButton({
     setIsLoading(true);
 
     try {
-      let result;
       if (type === 'climb') {
-        result = await toggleClimbLike(user.id, contentId);
+        const success = await toggleClimbLike(user.id, contentId);
+        if (success) {
+          setLikeData(prev => ({
+            count: prev.user_has_liked ? prev.count - 1 : prev.count + 1,
+            user_has_liked: !prev.user_has_liked
+          }));
+        } else {
+          console.error('❌ いいね操作に失敗');
+          alert('いいね操作に失敗しました');
+        }
       } else {
-        result = await togglePlanFavorite(user.id, contentId);
-      }
-
-      console.log('✅ いいね操作結果:', result);
-
-      if (result.success) {
-        // 楽観的更新
-        setLikeData(prev => {
-          let liked: boolean | undefined = undefined;
-          if ('liked' in result) liked = result.liked;
-          if ('favorited' in result) liked = result.favorited;
-          return {
-            count: liked !== undefined ? (liked ? prev.count + 1 : prev.count - 1) : prev.count,
-            user_has_liked: liked !== undefined ? liked : prev.user_has_liked
-          };
-        });
-      } else {
-        console.error('❌ いいね操作に失敗:', result.error);
-        alert('いいね操作に失敗しました: ' + result.error);
+        const result = await togglePlanFavorite(user.id, contentId);
+        if (result.success) {
+          setLikeData(prev => ({
+            count: result.favorited ? prev.count + 1 : prev.count - 1,
+            user_has_liked: result.favorited
+          }));
+        } else {
+          console.error('❌ いいね操作に失敗:', result.error);
+          alert('いいね操作に失敗しました: ' + result.error);
+        }
       }
     } catch (error) {
       console.error('❌ いいね操作中にエラー:', error);

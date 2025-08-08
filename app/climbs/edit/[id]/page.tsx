@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { getUserClimbRecords, ClimbRecord } from "@/lib/climb-utils";
+import { getUserClimbRecords } from "@/lib/climb-utils";
+import type { ClimbRecord } from "@/types/climb";
 import EditClimbRecord from "@/components/EditClimbRecord";
 import { useAuth } from "@/components/auth/AuthProvider";
 
