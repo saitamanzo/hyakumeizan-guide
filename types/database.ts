@@ -10,6 +10,7 @@ export type Mountain = {
   difficulty_level: string | null;
   latitude: number | null;
   longitude: number | null;
+  photo_url: string | null;
   created_at: string;
   updated_at: string;
 }
