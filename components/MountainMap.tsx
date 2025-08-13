@@ -10,6 +10,7 @@ import React, { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { LeafletMouseEvent } from 'leaflet';
 
 // Leafletのデフォルトマーカーアイコンの修正
 delete (L.Icon.Default.prototype as unknown as { _getIconUrl: unknown })._getIconUrl;
@@ -24,7 +25,7 @@ interface MountainMapProps {
   longitude: number;
   mountainName: string;
   elevation: number;
-  onLocationChange?: (lat: number, lng: number, locationName?: string, elevation?: number) => void;
+  onLocationChange?: (lat: number, lng: number) => void;
   enableLocationChange?: boolean;
 }
 
@@ -47,20 +48,33 @@ function MapClickHandler({
   setClickedPosition,
   setIsLoading
   }: MapClickHandlerProps) {
-  // クリックイベントハンドラ専用
-  // 必要なら useEffect で map.on('click', ...) を実装
+  const map = useMap();
+  useEffect(() => {
+    if (!enableLocationChange) return;
+  const handleClick = (e: LeafletMouseEvent) => {
+      const { lat, lng } = e.latlng;
+  setClickedPosition?.([lat, lng]);
+      if (onLocationChange) onLocationChange(lat, lng);
+      if (setIsLoading) setIsLoading(false);
+    };
+    map.on('click', handleClick);
+    return () => {
+      map.off('click', handleClick);
+    };
+  }, [map, enableLocationChange, setClickedPosition, onLocationChange, setIsLoading]);
   return null;
 }
 
-export default function MountainMap({
-  latitude,
-  longitude,
-  mountainName,
-  elevation,
-  onLocationChange,
-  enableLocationChange
-}: MountainMapProps) {
-  // サンプルスポットデータ（重複排除）
+export default function MountainMap(props: MountainMapProps) {
+  const {
+    latitude,
+    longitude,
+    mountainName,
+    elevation,
+    onLocationChange,
+    enableLocationChange
+  } = props;
+  const effectiveEnableLocationChange = enableLocationChange ?? true;
   const spots = [
     { type: 'onsen', name: '白馬八方温泉', lat: 36.697, lng: 137.837 },
     { type: 'parking', name: '富士山五合目駐車場', lat: 35.3606, lng: 138.7274 },
@@ -86,7 +100,6 @@ export default function MountainMap({
     popupAnchor: [0, -32],
   });
 
-  // ...existing code...
   const [mounted, setMounted] = useState(false);
   const [clickedPosition, setClickedPosition] = useState<[number, number] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -205,7 +218,6 @@ export default function MountainMap({
           )}
         </MapContainer>
       </div>
-
       {/* 地図操作のヒント */}
       <div className="p-3 bg-gray-50 border-t border-gray-200">
         <div className="flex items-center justify-between text-xs text-gray-600">
