@@ -294,13 +294,14 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
                   .map((page, index, array) => {
                     const showEllipsis = index > 0 && page - array[index - 1] > 1;
                     return (
-                      <>
+                      <React.Fragment key={page}>
                         {showEllipsis && (
-                          <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                          <span key={`ellipsis-${page}`} className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
                             ...
                           </span>
                         )}
                         <button
+                          key={`page-btn-${page}`}
                           onClick={() => goToPage(page)}
                           className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
                             currentPage === page
@@ -310,7 +311,7 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
                         >
                           {page}
                         </button>
-                      </>
+                      </React.Fragment>
                     );
                   })}
                 <button
