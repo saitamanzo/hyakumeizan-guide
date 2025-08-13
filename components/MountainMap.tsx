@@ -150,7 +150,7 @@ export default function MountainMap(props: MountainMapProps) {
           center={[latitude, longitude]}
           zoom={13}
           style={{ height: '100%', width: '100%' }}
-          className="z-0"
+          className="z-0 custom-cursor-map"
         >
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

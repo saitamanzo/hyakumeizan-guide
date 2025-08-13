@@ -68,3 +68,8 @@ body {
   opacity: 0;
   overflow: hidden;
 }
+
+/* カスタムカーソル */
+.custom-cursor-map .leaflet-container {
+  cursor: url('/arrow-cursor.svg') 2 2, auto;
+}
