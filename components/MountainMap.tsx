@@ -1,3 +1,9 @@
+interface MapClickHandlerProps {
+  onLocationChange?: (lat: number, lng: number, locationName?: string, elevation?: number) => void;
+  enableLocationChange?: boolean;
+  setClickedPosition?: (pos: [number, number] | null) => void;
+  setIsLoading?: (loading: boolean) => void;
+}
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -36,85 +42,51 @@ function MapCenter({ latitude, longitude }: { latitude: number; longitude: numbe
 
 // マップクリックハンドラーコンポーネント（改良版）
 function MapClickHandler({ 
-  onLocationChange, 
+  onLocationChange,
   enableLocationChange,
   setClickedPosition,
-  setIsLoading 
-}: {
-  onLocationChange?: (lat: number, lng: number, locationName?: string, elevation?: number) => void;
-  enableLocationChange: boolean;
-  setClickedPosition: (pos: [number, number] | null) => void;
-  setIsLoading: (loading: boolean) => void;
-}) {
-  const map = useMap();
-
-  useEffect(() => {
-    if (!enableLocationChange || !onLocationChange) {
-      return;
-    }
-
-    const handleClick = async (e: L.LeafletMouseEvent) => {
-      const { lat, lng } = e.latlng;
-      setClickedPosition([lat, lng]);
-      setIsLoading(true);
-      
-      try {
-        // 地名を取得（OpenStreetMap Nominatim API使用）
-        const response = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10&addressdetails=1&accept-language=ja`
-        );
-        const data = await response.json();
-        const locationName = data.display_name || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-        
-        // 標高の推定（同じロジックをWeatherInfoと共有）
-        let estimatedElevation: number | undefined;
-        
-        // 簡易標高推定
-        if (lat >= 35.0 && lat <= 35.8 && lng >= 138.5 && lng <= 139.0) {
-          estimatedElevation = Math.round(1000 + Math.abs(Math.sin(lat * 10) * Math.cos(lng * 10)) * 2000);
-        } else if (lat >= 35.5 && lat <= 37.0 && lng >= 137.0 && lng <= 138.5) {
-          estimatedElevation = Math.round(800 + Math.abs(Math.sin(lat * 8) * Math.cos(lng * 8)) * 1800);
-        } else if (lat >= 35.5 && lat <= 36.5 && lng >= 138.5 && lng <= 139.5) {
-          estimatedElevation = Math.round(300 + Math.abs(Math.sin(lat * 12) * Math.cos(lng * 12)) * 1200);
-        } else if (lat >= 37.0 && lat <= 41.0 && lng >= 140.0 && lng <= 141.5) {
-          estimatedElevation = Math.round(200 + Math.abs(Math.sin(lat * 6) * Math.cos(lng * 6)) * 1000);
-        } else if (lat >= 31.0 && lat <= 34.0 && lng >= 130.0 && lng <= 132.0) {
-          estimatedElevation = Math.round(200 + Math.abs(Math.sin(lat * 15) * Math.cos(lng * 15)) * 1400);
-        } else if (lng >= 136.0 && lng <= 141.0) {
-          estimatedElevation = Math.round(100 + Math.abs(Math.sin(lat * 20) * Math.cos(lng * 20)) * 800);
-        } else {
-          estimatedElevation = Math.round(50 + Math.abs(Math.sin(lat * 25) * Math.cos(lng * 25)) * 200);
-        }
-        
-        onLocationChange(lat, lng, locationName, estimatedElevation);
-      } catch (error) {
-        console.error('地名取得エラー:', error);
-        // エラー時も標高推定は行う
-        const simpleElevation = Math.round(100 + Math.abs(Math.sin(lat * 10) * Math.cos(lng * 10)) * 500);
-        onLocationChange(lat, lng, `${lat.toFixed(4)}, ${lng.toFixed(4)}`, simpleElevation);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    map.on('click', handleClick);
-
-    return () => {
-      map.off('click', handleClick);
-    };
-  }, [map, enableLocationChange, onLocationChange, setClickedPosition, setIsLoading]);
-  
+  setIsLoading
+  }: MapClickHandlerProps) {
+  // クリックイベントハンドラ専用
+  // 必要なら useEffect で map.on('click', ...) を実装
   return null;
 }
 
-export default function MountainMap({ 
-  latitude, 
-  longitude, 
-  mountainName, 
+export default function MountainMap({
+  latitude,
+  longitude,
+  mountainName,
   elevation,
   onLocationChange,
-  enableLocationChange = false 
+  enableLocationChange
 }: MountainMapProps) {
+  // サンプルスポットデータ（重複排除）
+  const spots = [
+    { type: 'onsen', name: '白馬八方温泉', lat: 36.697, lng: 137.837 },
+    { type: 'parking', name: '富士山五合目駐車場', lat: 35.3606, lng: 138.7274 },
+    { type: 'mountain', name: '槍ヶ岳', lat: 36.3414, lng: 137.6461 },
+    { type: 'hotel', name: '上高地ホテル', lat: 36.235, lng: 137.634 },
+    { type: 'camp', name: '涸沢キャンプ場', lat: 36.282, lng: 137.711 },
+  ];
+
+  // アイコン定義（重複排除）
+  const iconUrls: Record<string, string> = {
+    onsen: 'https://cdn-icons-png.flaticon.com/128/2933/2933186.png',
+    parking: 'https://cdn-icons-png.flaticon.com/128/854/854878.png',
+    mountain: 'https://cdn-icons-png.flaticon.com/128/684/684908.png',
+    hotel: 'https://cdn-icons-png.flaticon.com/128/235/235861.png',
+    camp: 'https://cdn-icons-png.flaticon.com/128/190/190411.png',
+  };
+
+  // アイコン生成関数（重複排除）
+  const getSpotIcon = (type: string) => new L.Icon({
+    iconUrl: iconUrls[type] || iconUrls['mountain'],
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32],
+  });
+
+  // ...existing code...
   const [mounted, setMounted] = useState(false);
   const [clickedPosition, setClickedPosition] = useState<[number, number] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -182,6 +154,24 @@ export default function MountainMap({
               </div>
             </Popup>
           </Marker>
+          {/* スポットマーカー表示 */}
+          {spots.map((spot, idx) => (
+            <Marker key={spot.type + '-' + idx} position={[spot.lat, spot.lng]} icon={getSpotIcon(spot.type)}>
+              <Popup>
+                <strong>{spot.name}</strong><br />
+                種別: {spot.type}
+              </Popup>
+            </Marker>
+          ))}
+          {/* スポットマーカー表示 */}
+          {spots.map((spot, idx) => (
+            <Marker key={spot.type + '-' + idx} position={[spot.lat, spot.lng]} icon={getSpotIcon(spot.type)}>
+              <Popup>
+                <strong>{spot.name}</strong><br />
+                種別: {spot.type}
+              </Popup>
+            </Marker>
+          ))}
           {clickedPosition && enableLocationChange && (
             <Marker position={clickedPosition} icon={new L.Icon({
               iconUrl: 'data:image/svg+xml;base64,' + btoa(`

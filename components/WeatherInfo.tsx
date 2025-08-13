@@ -128,8 +128,8 @@ export default function WeatherInfo({ latitude, longitude, mountainName, elevati
           main: {
             temp: 15.5 + tempVariation,
             feels_like: 12.3 + tempVariation - 1,
-            humidity: Math.max(30, Math.min(90, 65 + humidityVariation)),
-            pressure: 1013 + Math.sin(latitude * 0.1) * 20
+            humidity: Math.round(Math.max(30, Math.min(90, 65 + humidityVariation))),
+            pressure: Math.round(1013 + Math.sin(latitude * 0.1) * 20)
           },
           weather: [{
             main: "Clouds",
