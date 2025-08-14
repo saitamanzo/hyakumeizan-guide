@@ -190,7 +190,7 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
   };
 
   // 未ログイン時はお気に入り機能をスキップ
-  if (authLoading) {
+  if (authLoading || loadingFavorites) {
     return (
       <div className="py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">

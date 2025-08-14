@@ -1,10 +1,11 @@
+'use client';
+
 interface MapClickHandlerProps {
   onLocationChange?: (lat: number, lng: number, locationName?: string, elevation?: number) => void;
   enableLocationChange?: boolean;
   setClickedPosition?: (pos: [number, number] | null) => void;
   setIsLoading?: (loading: boolean) => void;
 }
-'use client';
 
 import React, { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
@@ -74,7 +75,8 @@ export default function MountainMap(props: MountainMapProps) {
     onLocationChange,
     enableLocationChange
   } = props;
-  const effectiveEnableLocationChange = enableLocationChange ?? true;
+  // enableLocationChange がundefinedの場合はtrue扱い
+  const effectiveEnableLocationChange = enableLocationChange !== false;
   const spots = [
     { type: 'onsen', name: '白馬八方温泉', lat: 36.697, lng: 137.837 },
     { type: 'parking', name: '富士山五合目駐車場', lat: 35.3606, lng: 138.7274 },
@@ -176,16 +178,7 @@ export default function MountainMap(props: MountainMapProps) {
               </Popup>
             </Marker>
           ))}
-          {/* スポットマーカー表示 */}
-          {spots.map((spot, idx) => (
-            <Marker key={spot.type + '-' + idx} position={[spot.lat, spot.lng]} icon={getSpotIcon(spot.type)}>
-              <Popup>
-                <strong>{spot.name}</strong><br />
-                種別: {spot.type}
-              </Popup>
-            </Marker>
-          ))}
-          {clickedPosition && enableLocationChange && (
+          {clickedPosition && effectiveEnableLocationChange && (
             <Marker position={clickedPosition} icon={new L.Icon({
               iconUrl: 'data:image/svg+xml;base64,' + btoa(`
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#dc2626" width="24" height="24">

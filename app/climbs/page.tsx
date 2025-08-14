@@ -50,16 +50,17 @@ export default function ClimbsPage() {
     }
   }
 
-  function handleShareClimb(climb: ClimbRecordWithMountain) {
-    if (!climb.is_public) {
-      setUiMessage('公開中の記録のみSNS投稿できます');
-      return;
-    }
-    const url = `${window.location.origin}/public-climbs?highlight=${climb.id}`;
-    const text = `${climb.mountain_name || ''}の登山記録をシェア！`;
-    const shareUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`;
-    window.open(shareUrl, '_blank');
-  }
+  // 未使用のため一旦コメントアウト（必要時に再利用）
+  // function handleShareClimb(climb: ClimbRecordWithMountain) {
+  //   if (!climb.is_public) {
+  //     setUiMessage('公開中の記録のみSNS投稿できます');
+  //     return;
+  //   }
+  //   const url = `${window.location.origin}/public-climbs?highlight=${climb.id}`;
+  //   const text = `${climb.mountain_name || ''}の登山記録をシェア！`;
+  //   const shareUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`;
+  //   window.open(shareUrl, '_blank');
+  // }
   const { user, loading } = useAuth();
   const [climbs, setClimbs] = useState<ClimbRecordWithMountain[]>([]);
   const [fetching, setFetching] = useState(true);

@@ -323,8 +323,33 @@ export async function updateClimbRecord(
     is_public?: boolean;
   }
 ): Promise<{ success: boolean; error?: string }> {
-  // ...実装予定...
-  return { success: false, error: 'Not implemented' };
+  try {
+    const updates: Record<string, unknown> = {};
+    if (data.climb_date !== undefined) updates.climb_date = data.climb_date;
+    if (data.route_id !== undefined) updates.route_id = data.route_id;
+    if (data.start_time !== undefined) updates.start_time = data.start_time;
+    if (data.end_time !== undefined) updates.end_time = data.end_time;
+    if (data.weather_conditions !== undefined) updates.weather_conditions = data.weather_conditions;
+    if (data.notes !== undefined) updates.notes = data.notes;
+    if (data.difficulty_rating !== undefined) updates.difficulty_rating = data.difficulty_rating;
+    if (data.is_public !== undefined) updates.is_public = data.is_public;
+
+    if (Object.keys(updates).length === 0) {
+      return { success: true };
+    }
+
+    const { error } = await supabase
+      .from('climbs')
+      .update(updates)
+      .eq('id', recordId);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : String(e) };
+  }
 }
 
 

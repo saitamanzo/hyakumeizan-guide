@@ -2,9 +2,17 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
 	images: {
-		domains: [
-			'ahxgjgorxyteneqacrws.supabase.co',
-			// 他に必要なドメインがあれば追加
+		remotePatterns: [
+			{
+				protocol: 'https',
+				hostname: 'lh3.googleusercontent.com',
+				pathname: '/**',
+			},
+			{
+				protocol: 'https',
+				hostname: 'ahxgjgorxyteneqacrws.supabase.co',
+				pathname: '/storage/v1/object/public/**',
+			},
 		],
 	},
 };

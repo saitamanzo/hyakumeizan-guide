@@ -9,10 +9,8 @@ export default function DeleteMountainButton({ id }: Props) {
   const handleDelete = async () => {
     if (!confirm("本当に削除しますか？")) return;
     try {
-      const res = await fetch("/api/admin/mountains/delete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id }),
+      const res = await fetch(`/api/admin/mountains/${id}`, {
+        method: "DELETE",
       });
       if (!res.ok) {
         const text = await res.text();
@@ -20,8 +18,9 @@ export default function DeleteMountainButton({ id }: Props) {
         console.error("APIエラー:", text);
         return;
       }
-      const result = await res.json();
-      if (result.success) {
+  type DeleteResponse = { success?: boolean; error?: string };
+  const result: DeleteResponse = await res.json().catch(() => ({}));
+  if (res.ok && (result.success ?? true)) {
         alert("削除しました");
         window.location.href = "/admin/mountains";
       } else {

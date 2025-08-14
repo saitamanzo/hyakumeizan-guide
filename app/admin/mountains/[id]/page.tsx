@@ -1,16 +1,12 @@
-
 "use client";
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Mountain } from "@/types/database";
 import DeleteMountainButton from "@/components/admin/DeleteMountainButton";
 
-export default function AdminMountainDetailPage(props: unknown) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { params } = props as { params: any };
-  const unwrappedParams = typeof params?.then === "function" ? React.use(params) : params;
-  const id = unwrappedParams.id;
+type Params = { id: string };
+export default function AdminMountainDetailPage({ params }: { params: Promise<Params> }) {
+  const { id } = React.use(params);
 
   const [mountain, setMountain] = useState<Mountain | null>(null);
   const [loading, setLoading] = useState(true);
