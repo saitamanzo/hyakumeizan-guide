@@ -3,8 +3,14 @@ import { createClient } from '@/lib/supabase/server';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function GET(request: Request, context: any) {
-	const { id } = await context.params;
 	const supabase = await createClient();
+	const { data: { session } } = await supabase.auth.getSession();
+	const allowed = (process.env.ADMIN_EMAILS || '').split(',').map((s) => s.trim()).filter(Boolean);
+	const email = session?.user?.email || '';
+	if (!email || (allowed.length > 0 && !allowed.includes(email))) {
+		return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+	}
+	const { id } = await context.params;
 	const { data, error } = await supabase
 		.from('mountains')
 		.select('*')
@@ -18,9 +24,15 @@ export async function GET(request: Request, context: any) {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function PUT(request: Request, context: any) {
+	const supabase = await createClient();
+	const { data: { session } } = await supabase.auth.getSession();
+	const allowed = (process.env.ADMIN_EMAILS || '').split(',').map((s) => s.trim()).filter(Boolean);
+	const email = session?.user?.email || '';
+	if (!email || (allowed.length > 0 && !allowed.includes(email))) {
+		return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
+	}
 	const { id } = await context.params;
 	const body = await request.json();
-	const supabase = await createClient();
 	const { error } = await supabase
 		.from('mountains')
 		.update(body)
@@ -33,8 +45,14 @@ export async function PUT(request: Request, context: any) {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function DELETE(request: Request, context: any) {
-	const { id } = await context.params;
 	const supabase = await createClient();
+	const { data: { session } } = await supabase.auth.getSession();
+	const allowed = (process.env.ADMIN_EMAILS || '').split(',').map((s) => s.trim()).filter(Boolean);
+	const email = session?.user?.email || '';
+	if (!email || (allowed.length > 0 && !allowed.includes(email))) {
+		return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
+	}
+	const { id } = await context.params;
 	const { error } = await supabase
 		.from('mountains')
 		.delete()

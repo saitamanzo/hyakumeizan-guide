@@ -55,7 +55,22 @@ export async function middleware(request: NextRequest) {
   );
 
   // Refresh session if expired - required for Server Components
-  await supabase.auth.getSession();
+  const { data: { session } } = await supabase.auth.getSession();
+
+  const url = new URL(request.url);
+  const isAdminPath = url.pathname.startsWith('/admin');
+  const isAdminApi = url.pathname.startsWith('/api/admin');
+
+  if ((isAdminPath || isAdminApi)) {
+    const allowed = (process.env.ADMIN_EMAILS || '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const email = session?.user?.email || '';
+    if (!email || (allowed.length > 0 && !allowed.includes(email))) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+  }
 
   return response;
 }
