@@ -1,9 +1,11 @@
 type Extra = Record<string, unknown>
 
 let sentry: unknown = null
+let sentryInited = false
 
 const SENTRY_DSN = process.env.SENTRY_DSN
 const ENV = process.env.NODE_ENV || 'development'
+const SENTRY_ENV = process.env.SENTRY_ENVIRONMENT || ENV
 
 async function ensureSentry() {
   if (!SENTRY_DSN) return null
@@ -16,6 +18,16 @@ async function ensureSentry() {
   const hasScope = 'getCurrentScope' in (mod as object)
   if (!hasScope) {
       return null
+    }
+  // init once when available
+  try {
+      const maybeInit = (mod as Record<string, unknown>)['init']
+      if (!sentryInited && typeof maybeInit === 'function') {
+        ;(maybeInit as (o: { dsn: string; environment?: string }) => void)({ dsn: SENTRY_DSN, environment: SENTRY_ENV })
+        sentryInited = true
+      }
+    } catch {
+      // ignore init failures
     }
   return sentry
   } catch {
