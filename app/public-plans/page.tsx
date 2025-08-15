@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getPublicPlans, PlanWithMountain } from '@/lib/plan-utils';
-import { getPlanComments, addPlanComment } from '@/lib/comment-utils';
+import Comments from '@/components/Comments';
 import LikeButton from '@/components/LikeButton';
 import { useAuth } from '@/components/auth/AuthProvider';
 
@@ -14,8 +14,7 @@ export default function PublicPlansPage() {
   const [sortKey, setSortKey] = useState<'new' | 'like'>('new');
   const [search, setSearch] = useState('');
   const { user } = useAuth();
-  const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
-  const [commentsCache, setCommentsCache] = useState<Record<string, { content: string; author: string; created_at: string }[]>>({});
+  // コメントは共通コンポーネントに委譲
 
   useEffect(() => {
     const loadPublicPlans = async () => {
@@ -34,40 +33,7 @@ export default function PublicPlansPage() {
     loadPublicPlans();
   }, []);
 
-  const loadComments = async (planId: string) => {
-    if (commentsCache[planId]) return; // 既に取得済みならスキップ
-    const list = await getPlanComments(planId);
-    setCommentsCache(prev => ({
-      ...prev,
-      [planId]: list.map(c => ({
-        content: c.content,
-        author: c.user?.nickname || c.user?.display_name || '匿名',
-        created_at: c.created_at,
-      }))
-    }));
-  };
-
-  const handleSubmitComment = async (planId: string) => {
-    if (!user) {
-      alert('コメントにはログインが必要です');
-      return;
-    }
-    const content = (commentInputs[planId] || '').trim();
-    if (!content) return;
-    const res = await addPlanComment(planId, user.id, content);
-    if (res.success) {
-      setCommentInputs(prev => ({ ...prev, [planId]: '' }));
-      // 再取得（いったん削除してから読み直す）
-      setCommentsCache(prev => {
-        const next = { ...prev };
-        delete next[planId];
-        return next;
-      });
-      await loadComments(planId);
-    } else {
-      alert('コメント投稿に失敗しました: ' + (res.error || ''));
-    }
-  };
+  // なし
 
  const getDifficultyBadge = (level?: 'easy' | 'moderate' | 'hard') => {
   if (!level) return null;
@@ -245,42 +211,11 @@ export default function PublicPlansPage() {
                     )}
                   </div>
                   {/* コメント */}
-                  <div className="mt-4">
-                    <button
-                      className="text-xs text-gray-600 hover:text-gray-800"
-                      onClick={() => plan.id && loadComments(plan.id)}
-                    >
-                      コメントを表示/更新
-                    </button>
-                    {plan.id && commentsCache[plan.id] && (
-                      <div className="mt-2 space-y-2">
-                        {commentsCache[plan.id].length === 0 && (
-                          <div className="text-xs text-gray-500">まだコメントはありません</div>
-                        )}
-                        {commentsCache[plan.id].map((c, idx) => (
-                          <div key={idx} className="text-sm bg-gray-50 rounded p-2">
-                            <div className="text-gray-800 whitespace-pre-wrap">{c.content}</div>
-                            <div className="text-xs text-gray-500 mt-1">by {c.author} • {new Date(c.created_at).toLocaleString('ja-JP')}</div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <div className="mt-2 flex gap-2">
-                      <input
-                        type="text"
-                        value={plan.id ? (commentInputs[plan.id] || '') : ''}
-                        onChange={(e) => plan.id && setCommentInputs(prev => ({ ...prev, [plan.id!]: e.target.value }))}
-                        placeholder="コメントを入力..."
-                        className="flex-1 border rounded px-3 py-2 text-sm"
-                      />
-                      <button
-                        onClick={() => plan.id && handleSubmitComment(plan.id)}
-                        className="px-3 py-2 bg-indigo-600 text-white rounded text-sm"
-                      >
-                        投稿
-                      </button>
+                  {plan.id && (
+                    <div className="mt-4">
+                      <Comments type="plan" id={plan.id} />
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
             ))}

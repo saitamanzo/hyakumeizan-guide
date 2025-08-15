@@ -31,6 +31,16 @@ export async function addPlanComment(planId: string, userId: string, content: st
   return { success: !error, error: error?.message };
 }
 
+export async function updatePlanComment(id: string, content: string): Promise<{ success: boolean; error?: string }>{
+  const { error } = await supabase.from('plan_comments').update({ content }).eq('id', id);
+  return { success: !error, error: error?.message };
+}
+
+export async function deletePlanComment(id: string): Promise<{ success: boolean; error?: string }>{
+  const { error } = await supabase.from('plan_comments').delete().eq('id', id);
+  return { success: !error, error: error?.message };
+}
+
 export async function getClimbComments(climbId: string): Promise<ClimbComment[]> {
   const { data, error } = await supabase
     .from('climb_comments')
@@ -53,5 +63,15 @@ export async function getClimbComments(climbId: string): Promise<ClimbComment[]>
 
 export async function addClimbComment(climbId: string, userId: string, content: string): Promise<{ success: boolean; error?: string }>{
   const { error } = await supabase.from('climb_comments').insert({ climb_id: climbId, user_id: userId, content });
+  return { success: !error, error: error?.message };
+}
+
+export async function updateClimbComment(id: string, content: string): Promise<{ success: boolean; error?: string }>{
+  const { error } = await supabase.from('climb_comments').update({ content }).eq('id', id);
+  return { success: !error, error: error?.message };
+}
+
+export async function deleteClimbComment(id: string): Promise<{ success: boolean; error?: string }>{
+  const { error } = await supabase.from('climb_comments').delete().eq('id', id);
   return { success: !error, error: error?.message };
 }

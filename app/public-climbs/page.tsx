@@ -5,8 +5,7 @@ import Link from 'next/link';
 import { getPublicClimbRecords, ClimbRecordWithMountain } from '@/lib/climb-utils';
 import LikeButton from '@/components/LikeButton';
 import { SocialShareButtonsCompact } from '@/components/SocialShareButtons';
-import { getClimbComments, addClimbComment } from '@/lib/comment-utils';
-import { useAuth } from '@/components/auth/AuthProvider';
+import Comments from '@/components/Comments';
 import Image from 'next/image';
 
 
@@ -16,9 +15,7 @@ export default function PublicClimbsPage() {
   const [error, setError] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<'new' | 'like'>('new');
   const [search, setSearch] = useState('');
-  const { user } = useAuth();
-  const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
-  const [commentsCache, setCommentsCache] = useState<Record<string, { content: string; author: string; created_at: string }[]>>({});
+  // コメントは共通コンポーネントに委譲
 
   useEffect(() => {
     const loadPublicClimbs = async () => {
@@ -291,75 +288,11 @@ export default function PublicClimbsPage() {
                     </Link>
                   </div>
                   {/* コメント */}
-                  <div className="mt-4">
-                    <button
-                      className="text-xs text-gray-600 hover:text-gray-800"
-                      onClick={async () => {
-                        if (!climb.id) return;
-                        if (commentsCache[climb.id]) return;
-                        const list = await getClimbComments(climb.id);
-                        setCommentsCache(prev => ({
-                          ...prev,
-                          [climb.id!]: list.map(c => ({
-                            content: c.content,
-                            author: c.user?.nickname || c.user?.display_name || '匿名',
-                            created_at: c.created_at,
-                          }))
-                        }));
-                      }}
-                    >
-                      コメントを表示/更新
-                    </button>
-                    {climb.id && commentsCache[climb.id] && (
-                      <div className="mt-2 space-y-2">
-                        {commentsCache[climb.id].length === 0 && (
-                          <div className="text-xs text-gray-500">まだコメントはありません</div>
-                        )}
-                        {commentsCache[climb.id].map((c, idx) => (
-                          <div key={idx} className="text-sm bg-gray-50 rounded p-2">
-                            <div className="text-gray-800 whitespace-pre-wrap">{c.content}</div>
-                            <div className="text-xs text-gray-500 mt-1">by {c.author} • {new Date(c.created_at).toLocaleString('ja-JP')}</div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <div className="mt-2 flex gap-2">
-                      <input
-                        type="text"
-                        value={climb.id ? (commentInputs[climb.id] || '') : ''}
-                        onChange={(e) => climb.id && setCommentInputs(prev => ({ ...prev, [climb.id!]: e.target.value }))}
-                        placeholder="コメントを入力..."
-                        className="flex-1 border rounded px-3 py-2 text-sm"
-                      />
-                      <button
-                        onClick={async () => {
-                          if (!user) { alert('コメントにはログインが必要です'); return; }
-                          if (!climb.id) return;
-                          const content = (commentInputs[climb.id] || '').trim();
-                          if (!content) return;
-                          const res = await addClimbComment(climb.id, user.id, content);
-                          if (res.success) {
-                            setCommentInputs(prev => ({ ...prev, [climb.id!]: '' }));
-                            // 再取得
-                            const list = await getClimbComments(climb.id);
-                            setCommentsCache(prev => ({
-                              ...prev,
-                              [climb.id!]: list.map(c => ({
-                                content: c.content,
-                                author: c.user?.nickname || c.user?.display_name || '匿名',
-                                created_at: c.created_at,
-                              }))
-                            }));
-                          } else {
-                            alert('コメント投稿に失敗しました');
-                          }
-                        }}
-                        className="px-3 py-2 bg-green-600 text-white rounded text-sm"
-                      >
-                        投稿
-                      </button>
+                  {climb.id && (
+                    <div className="mt-4">
+                      <Comments type="climb" id={climb.id} />
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
             ))}

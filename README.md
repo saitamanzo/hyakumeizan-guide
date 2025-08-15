@@ -1,6 +1,8 @@
 # 百名山ガイド
 
-日本百名山の情報共有と登山記録のためのウェブアプ3. 環境変数の設定
+日本百名山の情報共有と登山記録のためのウェブアプリ。
+
+## 環境変数の設定
 
 `.env.local`ファイルを作成し、以下の変数を設定：
 
@@ -12,8 +14,10 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 NEXT_PUBLIC_USE_REAL_WEATHER_API=false  # true: 実際のAPI, false: デモデータ
 NEXT_PUBLIC_OPENWEATHER_API_KEY=your-openweather-api-key
 
-# Google Maps API Configuration (標高データ取得用)
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your-google-maps-api-key
+# Elevation（Google）
+# サーバ専用キーのみを使用します。ブラウザへは公開しません。
+# Google Cloud で Elevation API を有効化し、HTTP リファラまたはIP制限を設定してください。
+GOOGLE_MAPS_API_KEY=your-server-side-google-maps-api-key
 ```
 
 ## API設定（オプション）
@@ -43,12 +47,14 @@ NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your-google-maps-api-key
 4. `.env.local` で設定：
 
    ```bash
-   NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your-google-maps-api-key
+   GOOGLE_MAPS_API_KEY=your-server-side-google-maps-api-key
    ```
 
 **料金**: Google Elevation API は月間200ドル分（約40,000リクエスト）まで無料。それ以降は1,000リクエストあたり約$5。
 
-**注意**: APIキーが設定されていない場合、日本の地形を考慮した推定値を使用します。## 機能
+**注意**: APIキーが未設定の場合は推定値にフォールバックします。クライアント側で Google のキーは参照しません。
+
+## 機能
 
 - 山の一覧表示と詳細情報
 - 登山ルート情報
@@ -72,22 +78,15 @@ git clone https://github.com/saitamanzo/hyakumeizan-guide.git
 cd hyakumeizan-guide
 ```
 
-1. 依存関係のインストール
+2. 依存関係のインストール
 
 ```bash
 npm install
 ```
 
-1. 環境変数の設定
+3. 環境変数の設定（上記参照）
 
-`.env.local`ファイルを作成し、以下の変数を設定：
-
-```bash
-NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
-```
-
-1. 開発サーバーの起動
+4. 開発サーバーの起動
 
 ```bash
 npm run dev

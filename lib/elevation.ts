@@ -45,7 +45,17 @@ async function getElevationFromGoogle(lat: number, lng: number): Promise<number 
     console.log('📡 API Route Response headers:', Object.fromEntries(response.headers.entries()));
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Failed to parse error response' }));
+      let errorData: unknown = null;
+      try {
+        errorData = await response.json();
+      } catch {
+        // ignore
+      }
+      // JSONが空や不十分な場合はテキストも拾う
+      if (!errorData || (typeof errorData === 'object' && Object.keys(errorData as Record<string, unknown>).length === 0)) {
+        const text = await response.text().catch(() => '');
+        errorData = text ? { raw: text } : { error: 'Failed to parse error response' };
+      }
       console.error('❌ API Route Error response:', errorData);
       
       // 詳細なエラー情報をログに出力
