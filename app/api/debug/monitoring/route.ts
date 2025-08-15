@@ -6,6 +6,12 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const type = searchParams.get('type') || 'message'
   const msg = searchParams.get('msg') || 'debug-ping'
+  const secret = searchParams.get('secret')
+  const allow = process.env.NODE_ENV !== 'production' || (process.env.DEBUG_MONITORING_SECRET && secret === process.env.DEBUG_MONITORING_SECRET)
+
+  if (!allow) {
+    return new Response(JSON.stringify({ ok: false, error: 'forbidden' }), { status: 403, headers: { 'Content-Type': 'application/json' } })
+  }
 
   try {
     if (type === 'error') {
@@ -13,7 +19,7 @@ export async function GET(req: Request) {
     } else {
       await reportMessage(msg, { source: 'api/debug/monitoring' })
     }
-    return Response.json({ ok: true, type, msg, env: process.env.NODE_ENV, hasDsn: Boolean(process.env.SENTRY_DSN) })
+  return Response.json({ ok: true, type, msg, env: process.env.NODE_ENV, hasDsn: Boolean(process.env.SENTRY_DSN) })
   } catch (e) {
     return new Response(JSON.stringify({ ok: false, error: (e as Error).message }), {
       status: 500,

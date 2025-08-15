@@ -15,10 +15,8 @@ async function ensureSentry() {
   const dynImport = new Function('m', 'return import(m)') as (m: string) => Promise<unknown>
   const mod = await dynImport('@sentry/nextjs')
   sentry = mod as unknown
-  const hasScope = 'getCurrentScope' in (mod as object)
-  if (!hasScope) {
-      return null
-    }
+  const hasCapture = 'captureException' in (mod as object) || 'captureMessage' in (mod as object)
+  if (!hasCapture) return null
   // init once when available
   try {
       const maybeInit = (mod as Record<string, unknown>)['init']
@@ -35,12 +33,26 @@ async function ensureSentry() {
   }
 }
 
+async function flushIfPossible(sdk: unknown, timeoutMs = 2000) {
+  try {
+    const maybeFlush = (sdk as Record<string, unknown>)['flush']
+    if (typeof maybeFlush === 'function') {
+      await (maybeFlush as (t?: number) => Promise<unknown>)(timeoutMs)
+    }
+  } catch {
+    // ignore
+  }
+}
+
 export async function reportError(err: Error, extra?: Extra) {
   try {
     const sdk = await ensureSentry()
     if (sdk && SENTRY_DSN && ENV === 'production') {
   const fn = (sdk as Record<string, unknown>)['captureException']
-  if (typeof fn === 'function') (fn as (e: Error, o?: unknown)=>void)(err, { extra })
+  if (typeof fn === 'function') {
+    (fn as (e: Error, o?: unknown)=>void)(err, { extra })
+    await flushIfPossible(sdk)
+  }
     } else {
       // fallback to console in non-prod or when Sentry unavailable
       console.error('[monitoring] error:', err.message, extra || {})
@@ -55,7 +67,10 @@ export async function reportMessage(message: string, extra?: Extra) {
     const sdk = await ensureSentry()
     if (sdk && SENTRY_DSN && ENV === 'production') {
   const fn = (sdk as Record<string, unknown>)['captureMessage']
-  if (typeof fn === 'function') (fn as (m: string, o?: unknown)=>void)(message, { extra })
+  if (typeof fn === 'function') {
+    (fn as (m: string, o?: unknown)=>void)(message, { extra })
+    await flushIfPossible(sdk)
+  }
     } else {
       console.warn('[monitoring] message:', message, extra || {})
     }
