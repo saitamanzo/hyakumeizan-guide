@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { getPlanComments, addPlanComment, getClimbComments, addClimbComment, updatePlanComment, deletePlanComment, updateClimbComment, deleteClimbComment } from '@/lib/comment-utils';
+import { getPlanComments, addPlanComment, getClimbComments, addClimbComment, updatePlanComment, deletePlanComment, updateClimbComment, deleteClimbComment, reportComment } from '@/lib/comment-utils';
 
 type CommentItem = {
   id: string;
@@ -23,15 +23,21 @@ export default function Comments(props: Props) {
   const [editingId, setEditingId] = useState<string|null>(null);
   const [editingText, setEditingText] = useState('');
   const [loading, setLoading] = useState(false);
+  const [offset, setOffset] = useState(0);
+  const PAGE_SIZE = 20;
+  const MIN_INTERVAL_MS = 15 * 1000; // 15秒
+  const NG_WORDS = ['死ね', '殺す', 'spam', 'http://', 'https://'];
+  const lastPostKey = `cm_last_post_${props.type}_${props.id}`;
 
   const load = useCallback(async () => {
     if (props.type === 'plan') {
-      const rows = await getPlanComments(props.id);
+      const rows = await getPlanComments(props.id, { limit: PAGE_SIZE, offset: 0 });
       setItems(rows as unknown as CommentItem[]);
     } else {
-      const rows = await getClimbComments(props.id);
+      const rows = await getClimbComments(props.id, { limit: PAGE_SIZE, offset: 0 });
       setItems(rows as unknown as CommentItem[]);
     }
+    setOffset(PAGE_SIZE);
   }, [props.type, props.id]);
 
   useEffect(() => { load(); }, [load]);
@@ -39,16 +45,29 @@ export default function Comments(props: Props) {
   async function submit() {
     if (!user) return alert('ログインが必要です');
     if (!input.trim()) return;
+    const normalized = input.trim();
+    // NGワードチェック
+    if (NG_WORDS.some(w => normalized.toLowerCase().includes(w))) {
+      return alert('不適切な表現やスパムの可能性があるため投稿できません');
+    }
+    // 投稿間隔チェック（ローカル簡易）
+    const last = Number(localStorage.getItem(lastPostKey) || '0');
+    const now = Date.now();
+    if (now - last < MIN_INTERVAL_MS) {
+      const sec = Math.ceil((MIN_INTERVAL_MS - (now - last)) / 1000);
+      return alert(`${sec}秒後に再度お試しください`);
+    }
     setLoading(true);
     try {
       if (props.type === 'plan') {
-        const r = await addPlanComment(props.id, user.id, input.trim());
+        const r = await addPlanComment(props.id, user.id, normalized);
         if (!r.success) throw new Error(r.error);
       } else {
-        const r = await addClimbComment(props.id, user.id, input.trim());
+        const r = await addClimbComment(props.id, user.id, normalized);
         if (!r.success) throw new Error(r.error);
       }
       setInput('');
+      localStorage.setItem(lastPostKey, String(Date.now()));
       await load();
   } catch {
       alert('投稿に失敗しました');
@@ -115,7 +134,7 @@ export default function Comments(props: Props) {
           投稿
         </button>
       </div>
-      {/* 一覧 */}
+  {/* 一覧 */}
       <div className="space-y-3">
         {items.map((c) => {
           const isMine = user?.id === c.user_id;
@@ -137,10 +156,27 @@ export default function Comments(props: Props) {
               ) : (
                 <p className="mt-2 text-gray-800 whitespace-pre-wrap">{c.content}</p>
               )}
-              {isMine && editingId !== c.id && (
+              {editingId !== c.id && (
                 <div className="mt-2 flex gap-2 justify-end text-sm">
-                  <button onClick={()=>{ setEditingId(c.id); setEditingText(c.content); }} className="px-2 py-1 text-blue-600 hover:underline">編集</button>
-                  <button onClick={()=>handleDelete(c.id)} className="px-2 py-1 text-red-600 hover:underline">削除</button>
+                  {isMine ? (
+                    <>
+                      <button onClick={()=>{ setEditingId(c.id); setEditingText(c.content); }} className="px-2 py-1 text-blue-600 hover:underline">編集</button>
+                      <button onClick={()=>handleDelete(c.id)} className="px-2 py-1 text-red-600 hover:underline">削除</button>
+                    </>
+                  ) : (
+                    user && (
+                      <button
+                        onClick={async ()=>{
+                          const reason = prompt('通報理由を入力してください（例: スパム/不適切表現 等）') || '';
+                          if (!reason.trim()) return;
+                          const t = props.type === 'plan' ? 'plan_comment' : 'climb_comment';
+                          const res = await reportComment(t, c.id, user.id, reason.trim());
+                          if (res.success) alert('通報を受け付けました'); else alert('通報に失敗しました');
+                        }}
+                        className="px-2 py-1 text-orange-600 hover:underline"
+                      >通報</button>
+                    )
+                  )}
                 </div>
               )}
             </div>
@@ -149,6 +185,27 @@ export default function Comments(props: Props) {
         {items.length === 0 && (
           <p className="text-sm text-gray-500">まだコメントはありません。</p>
         )}
+      </div>
+      {/* ページング */}
+      <div className="mt-3">
+        <button
+          onClick={async ()=>{
+            setLoading(true);
+            try {
+              const opts = { limit: PAGE_SIZE, offset };
+              const rows = props.type === 'plan'
+                ? await getPlanComments(props.id, opts)
+                : await getClimbComments(props.id, opts);
+              if (rows.length > 0) {
+                setItems(prev => [...prev, ...(rows as unknown as CommentItem[])]);
+                setOffset(offset + PAGE_SIZE);
+              }
+            } finally {
+              setLoading(false);
+            }
+          }}
+          className="text-sm text-gray-600 hover:text-gray-800"
+        >もっと読む</button>
       </div>
     </div>
   );

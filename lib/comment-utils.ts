@@ -6,12 +6,13 @@ const supabase = createClient();
 type PlanCommentRow = PlanComment & { users?: { id: string; display_name: string | null; nickname: string | null } | { id: string; display_name: string | null; nickname: string | null }[] };
 type ClimbCommentRow = ClimbComment & { users?: { id: string; display_name: string | null; nickname: string | null } | { id: string; display_name: string | null; nickname: string | null }[] };
 
-export async function getPlanComments(planId: string): Promise<PlanComment[]> {
+export async function getPlanComments(planId: string, opts?: { limit?: number; offset?: number }): Promise<PlanComment[]> {
   const { data, error } = await supabase
     .from('plan_comments')
     .select('*, users ( id, display_name, nickname )')
     .eq('plan_id', planId)
-    .order('created_at', { ascending: false });
+  .order('created_at', { ascending: false })
+  .range(opts?.offset ?? 0, (opts?.offset ?? 0) + (opts?.limit ?? 20) - 1);
   if (error) {
     console.error('getPlanComments error', error);
     return [];
@@ -41,12 +42,13 @@ export async function deletePlanComment(id: string): Promise<{ success: boolean;
   return { success: !error, error: error?.message };
 }
 
-export async function getClimbComments(climbId: string): Promise<ClimbComment[]> {
+export async function getClimbComments(climbId: string, opts?: { limit?: number; offset?: number }): Promise<ClimbComment[]> {
   const { data, error } = await supabase
     .from('climb_comments')
     .select('*, users ( id, display_name, nickname )')
     .eq('climb_id', climbId)
-    .order('created_at', { ascending: false });
+  .order('created_at', { ascending: false })
+  .range(opts?.offset ?? 0, (opts?.offset ?? 0) + (opts?.limit ?? 20) - 1);
   if (error) {
     console.error('getClimbComments error', error);
     return [];
@@ -73,5 +75,11 @@ export async function updateClimbComment(id: string, content: string): Promise<{
 
 export async function deleteClimbComment(id: string): Promise<{ success: boolean; error?: string }>{
   const { error } = await supabase.from('climb_comments').delete().eq('id', id);
+  return { success: !error, error: error?.message };
+}
+
+// 通報テーブル（reports）を想定: { id, target_type: 'plan_comment'|'climb_comment', target_id, reporter_id, reason, created_at }
+export async function reportComment(targetType: 'plan_comment' | 'climb_comment', targetId: string, reporterId: string, reason: string): Promise<{ success: boolean; error?: string }>{
+  const { error } = await supabase.from('reports').insert({ target_type: targetType, target_id: targetId, reporter_id: reporterId, reason });
   return { success: !error, error: error?.message };
 }

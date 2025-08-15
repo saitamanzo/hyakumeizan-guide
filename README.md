@@ -18,6 +18,15 @@ NEXT_PUBLIC_OPENWEATHER_API_KEY=your-openweather-api-key
 # サーバ専用キーのみを使用します。ブラウザへは公開しません。
 # Google Cloud で Elevation API を有効化し、HTTP リファラまたはIP制限を設定してください。
 GOOGLE_MAPS_API_KEY=your-server-side-google-maps-api-key
+
+# API保護（任意） – /api/elevation のレート制限
+ELEVATION_RATE_LIMIT_PER_MINUTE=60
+ELEVATION_RATE_LIMIT_WINDOW_MS=60000
+
+# 監視（任意） – Sentry を使用する場合
+# パッケージ: @sentry/nextjs を導入し、以下を設定してください
+# npm i @sentry/nextjs
+SENTRY_DSN=
 ```
 
 ## API設定（オプション）
