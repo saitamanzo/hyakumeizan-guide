@@ -68,7 +68,12 @@ export async function middleware(request: NextRequest) {
       .filter(Boolean);
     const email = session?.user?.email || '';
     if (!email || (allowed.length > 0 && !allowed.includes(email))) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      if (isAdminApi) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+      // For page routes under /admin, redirect to /auth/error for better UX
+      const redirectUrl = new URL('/auth/error', request.url);
+      return NextResponse.redirect(redirectUrl);
     }
   }
 
