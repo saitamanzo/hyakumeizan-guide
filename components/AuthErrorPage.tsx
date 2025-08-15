@@ -9,13 +9,18 @@ function AuthErrorPageInner() {
   const searchParams = useSearchParams();
   const [errorDetails, setErrorDetails] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  const [summary, setSummary] = useState<string>('認証エラーが発生しました');
 
   useEffect(() => {
     const error = searchParams.get('error');
     const errorDescription = searchParams.get('error_description');
+    const reason = searchParams.get('reason');
     const checkAuthStatus = async () => {
       const supabase = createClient();
       const { data: session, error: sessionError } = await supabase.auth.getSession();
+      if (reason === 'forbidden') {
+        setSummary('権限がありません。管理者のみアクセスできます。');
+      }
       setErrorDetails(`
 認証エラーが発生しました:
 - エラーコード: ${error || 'unknown'}
@@ -55,12 +60,8 @@ function AuthErrorPageInner() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.232 19.5c-.77.833.192 2.5 1.732 2.5z" />
             </svg>
           </div>
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-            認証エラー
-          </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            ログイン処理中にエラーが発生しました
-          </p>
+          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">認証エラー</h2>
+          <p className="mt-2 text-sm text-gray-600">{summary}</p>
         </div>
         <div className="bg-red-50 border border-red-200 rounded-md p-4">
           <h3 className="text-sm font-medium text-red-800 mb-2">エラー詳細</h3>

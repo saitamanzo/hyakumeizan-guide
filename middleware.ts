@@ -72,7 +72,8 @@ export async function middleware(request: NextRequest) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
       // For page routes under /admin, redirect to /auth/error for better UX
-      const redirectUrl = new URL('/auth/error', request.url);
+  const redirectUrl = new URL('/auth/error', request.url);
+  redirectUrl.searchParams.set('reason', 'forbidden');
       return NextResponse.redirect(redirectUrl);
     }
   }
