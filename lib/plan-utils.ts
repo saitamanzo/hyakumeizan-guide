@@ -12,6 +12,7 @@ export interface Plan {
   estimated_duration?: number; // 分単位
   difficulty_level?: 'easy' | 'moderate' | 'hard';
   route_plan?: string;
+  transport_mode?: 'car' | 'public' | 'taxi' | 'shuttle' | 'bike' | 'walk' | 'other';
   equipment_list?: string[];
   notes?: string;
   is_public?: boolean;
@@ -82,6 +83,7 @@ export async function savePlan(
     estimatedDuration?: number;
     difficultyLevel?: 'easy' | 'moderate' | 'hard';
     routePlan?: string;
+  transportMode?: 'car' | 'public' | 'taxi' | 'shuttle' | 'bike' | 'walk' | 'other';
     equipmentList?: string[];
     notes?: string;
     isPublic?: boolean;
@@ -97,6 +99,7 @@ export async function savePlan(
       estimated_duration: data.estimatedDuration,
       difficulty_level: data.difficultyLevel,
       route_plan: data.routePlan,
+  transport_mode: data.transportMode,
       equipment_list: data.equipmentList,
       notes: data.notes,
       is_public: data.isPublic || false,
@@ -230,6 +233,7 @@ export async function updatePlan(
     estimated_duration?: number;
     difficulty_level?: 'easy' | 'moderate' | 'hard';
     route_plan?: string;
+  transport_mode?: 'car' | 'public' | 'taxi' | 'shuttle' | 'bike' | 'walk' | 'other';
     equipment_list?: string[];
     notes?: string;
     is_public?: boolean;

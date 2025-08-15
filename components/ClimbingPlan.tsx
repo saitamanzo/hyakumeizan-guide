@@ -20,9 +20,12 @@ interface PlanData {
   startTime: string;
   estimatedDuration: string;
   route: string;
+  transportMode: 'car' | 'public' | 'taxi' | 'shuttle' | 'bike' | 'walk' | 'other';
   equipment: string[];
   notes: string;
 }
+
+type PlanWithTransport = PlanWithMountain & { transport_mode?: 'car' | 'public' | 'taxi' | 'shuttle' | 'bike' | 'walk' | 'other' };
 
 export default function ClimbingPlan({ mountainName, mountainId, difficulty, elevation }: ClimbingPlanProps) {
   const { user, loading } = useAuth();
@@ -34,6 +37,7 @@ export default function ClimbingPlan({ mountainName, mountainId, difficulty, ele
     startTime: '06:00',
     estimatedDuration: '6',
     route: '一般ルート',
+  transportMode: 'public',
     equipment: [],
     notes: ''
   });
@@ -122,6 +126,7 @@ export default function ClimbingPlan({ mountainName, mountainId, difficulty, ele
         plannedDate: plan.date,
         estimatedDuration: plan.estimatedDuration ? parseInt(plan.estimatedDuration) * 60 : undefined, // 時間を分に変換
         routePlan: plan.route,
+  transportMode: plan.transportMode,
         equipmentList: plan.equipment.filter(item => item.trim() !== ''),
         notes: plan.notes,
         isPublic: false
@@ -139,13 +144,14 @@ export default function ClimbingPlan({ mountainName, mountainId, difficulty, ele
   };
 
   // 計画の編集ハンドラー
-  const handleEditPlan = useCallback((savedPlan: PlanWithMountain) => {
+  const handleEditPlan = useCallback((savedPlan: PlanWithTransport) => {
     // フォームに既存データを設定
     setPlan({
       date: savedPlan.planned_date || '',
       startTime: '06:00', // デフォルト値
       estimatedDuration: savedPlan.estimated_duration ? Math.round(savedPlan.estimated_duration / 60).toString() : '6',
       route: savedPlan.route_plan || '一般ルート',
+  transportMode: savedPlan.transport_mode || 'public',
       equipment: savedPlan.equipment_list || [],
       notes: savedPlan.notes || ''
     });
@@ -396,6 +402,24 @@ export default function ClimbingPlan({ mountainName, mountainId, difficulty, ele
                 <option value="西面ルート">西面ルート</option>
                 <option value="北面ルート">北面ルート</option>
                 <option value="南面ルート">南面ルート</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                交通手段
+              </label>
+              <select
+                value={plan.transportMode}
+                onChange={(e) => setPlan(prev => ({ ...prev, transportMode: e.target.value as PlanData['transportMode'] }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+              >
+                <option value="public">公共交通機関</option>
+                <option value="car">自家用車</option>
+                <option value="taxi">タクシー</option>
+                <option value="shuttle">シャトル・バス</option>
+                <option value="bike">自転車</option>
+                <option value="walk">徒歩</option>
+                <option value="other">その他</option>
               </select>
             </div>
           </div>

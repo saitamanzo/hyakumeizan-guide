@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { updatePlan, Plan } from '@/lib/plan-utils';
 
 interface EditPlanProps {
-  plan: Plan & { mountain_name?: string };
+  plan: Plan & { mountain_name?: string; transport_mode?: 'car' | 'public' | 'taxi' | 'shuttle' | 'bike' | 'walk' | 'other' };
   onUpdate: (updatedPlan: Plan) => void;
   onCancel: () => void;
 }
@@ -17,6 +17,7 @@ export default function EditPlan({ plan, onUpdate, onCancel }: EditPlanProps) {
     estimated_duration: plan.estimated_duration || 480, // 8時間をデフォルトに
     difficulty_level: plan.difficulty_level || 'moderate' as const,
     route_plan: plan.route_plan || '',
+  transport_mode: plan.transport_mode || 'public',
     equipment_list: plan.equipment_list || [],
     notes: plan.notes || '',
     is_public: plan.is_public || false,
@@ -32,13 +33,23 @@ export default function EditPlan({ plan, onUpdate, onCancel }: EditPlanProps) {
     { value: 'hard', label: '上級（熟練者向け）' }
   ];
 
+  const transportOptions = [
+    { value: 'public', label: '公共交通機関' },
+    { value: 'car', label: '自家用車' },
+    { value: 'taxi', label: 'タクシー' },
+    { value: 'shuttle', label: 'シャトル・バス' },
+    { value: 'bike', label: '自転車' },
+    { value: 'walk', label: '徒歩' },
+    { value: 'other', label: 'その他' },
+  ] as const;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
     try {
-      const result = await updatePlan(plan.id!, formData);
+  const result = await updatePlan(plan.id!, formData);
       
       if (result.success) {
         // 更新されたプランを親コンポーネントに渡す
@@ -193,6 +204,23 @@ export default function EditPlan({ plan, onUpdate, onCancel }: EditPlanProps) {
               className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               placeholder="登山口 → 中間地点 → 山頂 → 下山ルート..."
             />
+          </div>
+
+          {/* 交通手段 */}
+          <div>
+            <label htmlFor="transport_mode" className="block text-sm font-medium text-gray-700 mb-1">
+              交通手段
+            </label>
+            <select
+              id="transport_mode"
+              value={formData.transport_mode}
+              onChange={(e) => handleChange('transport_mode', e.target.value)}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+            >
+              {transportOptions.map(option => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
           </div>
 
           {/* 装備リスト */}
