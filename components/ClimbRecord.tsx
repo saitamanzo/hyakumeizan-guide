@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { getUserClimbRecords, saveClimbRecord, deleteClimbRecord } from '@/lib/climb-utils';
+import { getUserPlans, getPublicPlansByMountain, PlanWithMountain } from '@/lib/plan-utils';
 import PhotoUpload, { UploadedPhoto } from './PhotoUpload';
 import { getClimbPhotos, ClimbPhoto } from '@/lib/photo-utils';
 import { createClient } from '@/lib/supabase/client';
@@ -20,11 +21,15 @@ interface ClimbRecordProps {
 
 interface RecordData {
   date: string;
+  dateFrom?: string;
+  dateTo?: string;
   route: string;
   duration: string;
   difficulty: 'easy' | 'moderate' | 'hard';
   weather: string;
   companions: string;
+  transportMode?: 'car' | 'public' | 'taxi' | 'shuttle' | 'bike' | 'walk' | 'other';
+  lodging?: string;
   notes: string;
   rating: number;
 }
@@ -46,13 +51,19 @@ export default function ClimbRecord({ mountainName, mountainId }: ClimbRecordPro
   const [savedRecords, setSavedRecords] = useState<SavedRecord[]>([]);
   const [saving, setSaving] = useState(false);
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
+  const [plansForMountain, setPlansForMountain] = useState<PlanWithMountain[]>([]);
+  const [selectedPlanId, setSelectedPlanId] = useState<string>('');
   const [record, setRecord] = useState<RecordData>({
-    date: '',
+  date: '',
+  dateFrom: '',
+  dateTo: '',
     route: '一般ルート',
     duration: '',
     difficulty: 'easy',
     weather: '晴れ',
     companions: '',
+  transportMode: 'public',
+  lodging: '',
     notes: '',
     rating: 5
   });
@@ -61,6 +72,102 @@ export default function ClimbRecord({ mountainName, mountainId }: ClimbRecordPro
   useEffect(() => {
     // マウント時の初期化
   }, [mountainName, mountainId, user, loading]);
+
+  // 計画の読み込み（自分＋公開、山別）
+  useEffect(() => {
+    const loadPlans = async () => {
+      try {
+        const results: PlanWithMountain[] = [];
+        if (user) {
+          const myPlans = await getUserPlans(user.id);
+          results.push(
+            ...myPlans.filter(p => p.mountain_id === mountainId)
+          );
+        }
+        const publicPlans = await getPublicPlansByMountain(mountainId);
+        // 自分の計画と重複する公開計画を除外（idベース）
+        const myIds = new Set(results.map(p => p.id));
+        results.push(...publicPlans.filter(p => !myIds.has(p.id!)));
+        setPlansForMountain(results);
+      } catch (e) {
+        console.error('計画の読み込みに失敗:', e);
+        setPlansForMountain([]);
+      }
+    };
+    loadPlans();
+  }, [user, mountainId]);
+
+  // 計画を適用して記録フォームに反映
+  const applyPlanToRecord = useCallback((plan: PlanWithMountain) => {
+    const plannedDate = plan.planned_date || plan.planned_start_date || '';
+    const startDate = plan.planned_start_date || plan.planned_date || '';
+    const endDate = plan.planned_end_date || plan.planned_date || '';
+    const difficulty = (plan.difficulty_level || 'easy') as RecordData['difficulty'];
+    const transportMode = plan.transport_mode || 'public';
+    const lodging = plan.lodging || '';
+    const prefillNotesParts = [
+      plan.description ? `計画の概要: ${plan.description}` : '',
+      plan.route_plan ? `計画ルート: ${plan.route_plan}` : '',
+      Array.isArray(plan.equipment_list) && plan.equipment_list.length > 0
+        ? `装備: ${plan.equipment_list.join(', ')}`
+        : '',
+    ].filter(Boolean);
+
+    setRecord(prev => ({
+      ...prev,
+      date: plannedDate?.split('T')[0] || prev.date,
+      dateFrom: startDate?.split('T')[0] || prev.dateFrom,
+      dateTo: endDate?.split('T')[0] || prev.dateTo,
+      difficulty,
+      transportMode: transportMode as NonNullable<RecordData['transportMode']>,
+      lodging,
+      notes: prefillNotesParts.join('\n')
+    }));
+  }, []);
+
+  // 計画取り込みUI（共通）
+  const PlanImportBlock = (
+    <div className="bg-orange-50 border border-orange-200 rounded-md p-3">
+      <div className="flex flex-col md:flex-row md:items-center gap-2">
+        <label className="text-sm font-medium text-orange-800">計画を取り込む</label>
+        <div className="flex-1 flex gap-2">
+          <select
+            value={selectedPlanId}
+            onChange={(e) => setSelectedPlanId(e.target.value)}
+            className="flex-1 px-3 py-2 border border-orange-300 rounded-md bg-white focus:ring-orange-500 focus:border-orange-500 text-sm"
+          >
+            <option value="">（未選択）</option>
+            {plansForMountain.length > 0 && (
+              <optgroup label="利用可能な計画">
+                {plansForMountain.map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.title} {p.is_public ? '（公開）' : '（自分）'} {p.planned_date || p.planned_start_date ? `- ${String(p.planned_date || p.planned_start_date).split('T')[0]}` : ''}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+          </select>
+          <button
+            type="button"
+            disabled={!selectedPlanId}
+            onClick={() => {
+              const plan = plansForMountain.find(p => p.id === selectedPlanId);
+              if (plan) {
+                applyPlanToRecord(plan);
+                setShowRecordForm(true); // 自動でフォームを開く
+              }
+            }}
+            className={`px-4 py-2 text-sm rounded-md ${!selectedPlanId ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'bg-orange-600 text-white hover:bg-orange-700'}`}
+          >
+            取り込む
+          </button>
+        </div>
+      </div>
+      {plansForMountain.length === 0 && (
+        <p className="mt-2 text-xs text-orange-700">この山に関連する公開計画、またはあなたの計画は見つかりませんでした。</p>
+      )}
+    </div>
+  );
 
   const loadSavedRecords = useCallback(async () => {
     if (!user) return;
@@ -150,7 +257,7 @@ export default function ClimbRecord({ mountainName, mountainId }: ClimbRecordPro
     
     try {
       // 新しいAPIに合わせて保存
-      const result = await saveClimbRecord(user.id, mountainId, record);
+  const result = await saveClimbRecord(user.id, mountainId, record);
 
       if (result.success) {
         // 写真がある場合は、保存された記録IDに関連付けてアップロード
@@ -190,11 +297,15 @@ export default function ClimbRecord({ mountainName, mountainId }: ClimbRecordPro
         setPhotos([]);
         setRecord({
           date: '',
+          dateFrom: '',
+          dateTo: '',
           route: '一般ルート',
           duration: '',
           difficulty: 'easy',
           weather: '晴れ',
           companions: '',
+          transportMode: 'public',
+          lodging: '',
           notes: '',
           rating: 5
         });
@@ -232,11 +343,15 @@ export default function ClimbRecord({ mountainName, mountainId }: ClimbRecordPro
     // フォームに既存データを設定
     setRecord({
       date: savedRecord.date,
+      dateFrom: savedRecord.date,
+      dateTo: savedRecord.date,
       route: savedRecord.route,
       duration: savedRecord.duration,
       difficulty: savedRecord.difficulty,
       weather: savedRecord.weather,
       companions: savedRecord.companions,
+      transportMode: 'public',
+      lodging: '',
       notes: savedRecord.notes,
       rating: savedRecord.rating
     });
@@ -308,6 +423,8 @@ export default function ClimbRecord({ mountainName, mountainId }: ClimbRecordPro
 
       {!showRecordForm ? (
         <div className="space-y-3">
+          {/* 計画から取り込む */}
+          {PlanImportBlock}
           {!user && (
             <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
               <div className="flex items-center">
@@ -450,6 +567,11 @@ export default function ClimbRecord({ mountainName, mountainId }: ClimbRecordPro
         </div>
       ) : (
         <form onSubmit={async (e) => { e.preventDefault(); await saveRecord(); }} className="space-y-4">
+          {/* フォーム上部にも計画取り込みを配置 */}
+          <div className="-mt-2">
+            {PlanImportBlock}
+            <p className="mt-2 text-xs text-gray-600">選択した計画の情報でフォームの一部を上書きします。</p>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -463,6 +585,23 @@ export default function ClimbRecord({ mountainName, mountainId }: ClimbRecordPro
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"
                 required
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">期間（From/To）</label>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="date"
+                  value={record.dateFrom}
+                  onChange={(e) => setRecord(prev => ({ ...prev, dateFrom: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"
+                />
+                <input
+                  type="date"
+                  value={record.dateTo}
+                  onChange={(e) => setRecord(prev => ({ ...prev, dateTo: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"
+                />
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -529,6 +668,22 @@ export default function ClimbRecord({ mountainName, mountainId }: ClimbRecordPro
                 ))}
               </select>
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">交通手段</label>
+              <select
+                value={record.transportMode}
+                onChange={(e) => setRecord(prev => ({ ...prev, transportMode: e.target.value as NonNullable<RecordData['transportMode']> }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"
+              >
+                <option value="public">公共交通機関</option>
+                <option value="car">自家用車</option>
+                <option value="taxi">タクシー</option>
+                <option value="shuttle">シャトル・バス</option>
+                <option value="bike">自転車</option>
+                <option value="walk">徒歩</option>
+                <option value="other">その他</option>
+              </select>
+            </div>
           </div>
 
           <div>
@@ -560,6 +715,17 @@ export default function ClimbRecord({ mountainName, mountainId }: ClimbRecordPro
               value={record.companions}
               onChange={(e) => setRecord(prev => ({ ...prev, companions: e.target.value }))}
               placeholder="例: 友人2名、単独行 など"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">宿泊地（任意）</label>
+            <input
+              type="text"
+              value={record.lodging}
+              onChange={(e) => setRecord(prev => ({ ...prev, lodging: e.target.value }))}
+              placeholder="例: 山小屋〇〇、テント場△△ など"
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"
             />
           </div>

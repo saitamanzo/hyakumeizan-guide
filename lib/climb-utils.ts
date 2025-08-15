@@ -17,6 +17,8 @@ export interface ClimbRecord {
   user_id: string;
   mountain_id: string;
   route_id?: string;
+  transport_mode?: 'car' | 'public' | 'taxi' | 'shuttle' | 'bike' | 'walk' | 'other';
+  lodging?: string;
 }
 
 // 表示用の登山記録（山の名前・写真・ユーザー・いいね数込み）
@@ -32,6 +34,8 @@ export interface ClimbRecordWithMountain extends ClimbRecord {
   published_at?: string;
   difficulty_rating?: number;
   climb_date?: string;
+  climb_start_date?: string;
+  climb_end_date?: string;
   weather_conditions?: string;
   is_public?: boolean;
   created_at?: string;
@@ -45,12 +49,16 @@ export async function saveClimbRecord(
   userId: string,
   mountainId: string,
   data: {
-    date: string;
+  date: string; // backward compatible
+  dateFrom?: string;
+  dateTo?: string;
     route: string;
     duration: string;
     difficulty: 'easy' | 'moderate' | 'hard';
     weather: string;
     companions: string;
+  transportMode?: 'car' | 'public' | 'taxi' | 'shuttle' | 'bike' | 'walk' | 'other';
+  lodging?: string;
     notes: string;
     rating: number;
     isPublic?: boolean;
@@ -62,11 +70,15 @@ export async function saveClimbRecord(
     const record = {
       user_id: userId,
       mountain_id: mountainId,
-      climb_date: data.date,
+  climb_date: data.date,
+  climb_start_date: data.dateFrom ?? data.date,
+  climb_end_date: data.dateTo ?? data.date,
       notes: `ルート: ${data.route}\n所要時間: ${data.duration}\n同行者: ${data.companions}\n満足度: ${data.rating}/5\n\n${data.notes}`,
       weather_conditions: data.weather,
       difficulty_rating: difficultyMap[data.difficulty],
       is_public: data.isPublic || false,
+  transport_mode: data.transportMode,
+  lodging: data.lodging,
     };
 
     const { data: result, error } = await supabase
@@ -313,7 +325,9 @@ export async function updateClimbRecordPublicStatus(
 export async function updateClimbRecord(
   recordId: string,
   data: {
-    climb_date?: string;
+  climb_date?: string;
+  climb_start_date?: string;
+  climb_end_date?: string;
     route_id?: string;
     start_time?: string;
     end_time?: string;
@@ -321,11 +335,15 @@ export async function updateClimbRecord(
     notes?: string;
     difficulty_rating?: number;
     is_public?: boolean;
+  transport_mode?: 'car' | 'public' | 'taxi' | 'shuttle' | 'bike' | 'walk' | 'other';
+  lodging?: string;
   }
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const updates: Record<string, unknown> = {};
     if (data.climb_date !== undefined) updates.climb_date = data.climb_date;
+  if (data.climb_start_date !== undefined) updates.climb_start_date = data.climb_start_date;
+  if (data.climb_end_date !== undefined) updates.climb_end_date = data.climb_end_date;
     if (data.route_id !== undefined) updates.route_id = data.route_id;
     if (data.start_time !== undefined) updates.start_time = data.start_time;
     if (data.end_time !== undefined) updates.end_time = data.end_time;
@@ -333,6 +351,8 @@ export async function updateClimbRecord(
     if (data.notes !== undefined) updates.notes = data.notes;
     if (data.difficulty_rating !== undefined) updates.difficulty_rating = data.difficulty_rating;
     if (data.is_public !== undefined) updates.is_public = data.is_public;
+  if (data.transport_mode !== undefined) updates.transport_mode = data.transport_mode;
+  if (data.lodging !== undefined) updates.lodging = data.lodging;
 
     if (Object.keys(updates).length === 0) {
       return { success: true };

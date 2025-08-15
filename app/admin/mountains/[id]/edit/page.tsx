@@ -4,16 +4,16 @@ import React, { useEffect, useState } from "react";
 import MountainForm from "@/components/admin/MountainForm";
 import type { Mountain } from "@/types/database";
 
-export default function AdminMountainEditPage(props: unknown) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rawParams = props && (props as any).params;
-  const params = typeof rawParams?.then === 'function' ? React.use(rawParams) : rawParams;
+type PageParams = { params: Promise<{ id: string }> };
+
+export default function AdminMountainEditPage({ params }: PageParams) {
+  const { id } = React.use(params);
   const [mountain, setMountain] = useState<Mountain | null>(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     const fetchMountain = async () => {
       try {
-        const res = await fetch(`/api/admin/mountains/${params.id}/edit`);
+    const res = await fetch(`/api/admin/mountains/${id}/edit`);
         if (!res.ok) throw new Error("APIエラー: " + res.status);
         const data = await res.json();
         setMountain(data);
@@ -24,11 +24,11 @@ export default function AdminMountainEditPage(props: unknown) {
       }
     };
     fetchMountain();
-  }, [params?.id]);
+  }, [id]);
 
   const handleSubmit = async (data: Partial<Mountain>) => {
     try {
-      const res = await fetch(`/api/admin/mountains/${params.id}`, {
+      const res = await fetch(`/api/admin/mountains/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -36,7 +36,7 @@ export default function AdminMountainEditPage(props: unknown) {
       const result = await res.json();
       if (result.success) {
         alert("更新しました");
-        window.location.href = `/admin/mountains/${params.id}`;
+        window.location.href = `/admin/mountains/${id}`;
       } else {
         alert("更新失敗: " + (result.error || "不明なエラー"));
       }

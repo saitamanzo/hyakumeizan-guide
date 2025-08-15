@@ -10,6 +10,7 @@ import Link from 'next/link';
 interface UserProfile {
   id: string;
   display_name: string;
+  nickname?: string | null;
   experience_level: string;
   mountains_climbed: number;
   created_at: string;
@@ -24,6 +25,7 @@ export default function ProfilePage() {
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({
     display_name: '',
+  nickname: '',
     experience_level: 'beginner'
   });
   const [updateLoading, setUpdateLoading] = useState(false);
@@ -65,6 +67,7 @@ export default function ProfilePage() {
           setProfile(data);
           setEditForm({
             display_name: data.display_name || '',
+            nickname: data.nickname || '',
             experience_level: data.experience_level || 'beginner'
           });
         } else {
@@ -99,6 +102,7 @@ export default function ProfilePage() {
         .from('users')
         .update({
           display_name: editForm.display_name.trim(),
+          nickname: editForm.nickname.trim() || null,
           experience_level: editForm.experience_level,
           updated_at: new Date().toISOString()
         })
@@ -112,6 +116,7 @@ export default function ProfilePage() {
       setProfile(prev => prev ? {
         ...prev,
         display_name: editForm.display_name.trim(),
+  nickname: editForm.nickname.trim() || null,
         experience_level: editForm.experience_level,
         updated_at: new Date().toISOString()
       } : null);
@@ -203,6 +208,21 @@ export default function ProfilePage() {
                       </div>
 
                       <div>
+                        <label htmlFor="nickname" className="block text-sm font-medium text-gray-700">
+                          ニックネーム（公開表示名）
+                        </label>
+                        <input
+                          type="text"
+                          id="nickname"
+                          value={editForm.nickname}
+                          onChange={(e) => setEditForm(prev => ({ ...prev, nickname: e.target.value }))}
+                          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="公開時に表示する名前（任意）"
+                        />
+                        <p className="mt-1 text-xs text-gray-500">未設定の場合は表示名が使われます。</p>
+                      </div>
+
+                      <div>
                         <label htmlFor="experience_level" className="block text-sm font-medium text-gray-700">
                           登山経験レベル
                         </label>
@@ -232,6 +252,7 @@ export default function ProfilePage() {
                             setEditing(false);
                             setEditForm({
                               display_name: profile.display_name || '',
+                              nickname: profile.nickname || '',
                               experience_level: profile.experience_level || 'beginner'
                             });
                           }}
@@ -251,6 +272,10 @@ export default function ProfilePage() {
                         <div>
                           <dt className="text-sm font-medium text-gray-500">表示名</dt>
                           <dd className="mt-1 text-sm text-gray-900">{profile.display_name || '未設定'}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-sm font-medium text-gray-500">ニックネーム（公開表示名）</dt>
+                          <dd className="mt-1 text-sm text-gray-900">{profile.nickname || '未設定'}</dd>
                         </div>
                         <div>
                           <dt className="text-sm font-medium text-gray-500">経験レベル</dt>

@@ -33,11 +33,30 @@ export type Route = {
 export type User = {
   id: string;
   display_name: string | null;
+  nickname?: string | null;
   biography: string | null;
   experience_level: string | null;
   mountains_climbed: number;
   created_at: string;
   updated_at: string;
+}
+
+export type PlanComment = {
+  id: string;
+  plan_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  user?: Pick<User, 'id' | 'display_name' | 'nickname'>;
+}
+
+export type ClimbComment = {
+  id: string;
+  climb_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  user?: Pick<User, 'id' | 'display_name' | 'nickname'>;
 }
 
 export type Climb = {
@@ -46,10 +65,14 @@ export type Climb = {
   mountain_id: string;
   route_id: string | null;
   climb_date: string;
+  climb_start_date: string | null;
+  climb_end_date: string | null;
   start_time: string | null;
   end_time: string | null;
   weather_conditions: string | null;
   notes: string | null;
+  transport_mode: 'car' | 'public' | 'taxi' | 'shuttle' | 'bike' | 'walk' | 'other' | null;
+  lodging: string | null;
   is_public: boolean | null;
   published_at: string | null;
   difficulty_rating: number | null;
@@ -75,10 +98,14 @@ export type Plan = {
   title: string;
   description: string | null;
   planned_date: string | null;
+  planned_start_date: string | null;
+  planned_end_date: string | null;
   estimated_duration: number | null; // 分単位
   difficulty_level: 'easy' | 'moderate' | 'hard' | null;
   route_plan: string | null;
+  transport_mode: 'car' | 'public' | 'taxi' | 'shuttle' | 'bike' | 'walk' | 'other' | null;
   equipment_list: string[] | null;
+  lodging: string | null;
   notes: string | null;
   is_public: boolean | null;
   published_at: string | null;

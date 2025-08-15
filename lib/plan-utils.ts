@@ -9,11 +9,14 @@ export interface Plan {
   title: string;
   description?: string;
   planned_date?: string;
+  planned_start_date?: string;
+  planned_end_date?: string;
   estimated_duration?: number; // 分単位
   difficulty_level?: 'easy' | 'moderate' | 'hard';
   route_plan?: string;
   transport_mode?: 'car' | 'public' | 'taxi' | 'shuttle' | 'bike' | 'walk' | 'other';
   equipment_list?: string[];
+  lodging?: string;
   notes?: string;
   is_public?: boolean;
   published_at?: string;
@@ -79,12 +82,15 @@ export async function savePlan(
   data: {
     title: string;
     description?: string;
-    plannedDate?: string;
+  plannedDate?: string; // backward compatible
+  plannedStartDate?: string;
+  plannedEndDate?: string;
     estimatedDuration?: number;
     difficultyLevel?: 'easy' | 'moderate' | 'hard';
     routePlan?: string;
   transportMode?: 'car' | 'public' | 'taxi' | 'shuttle' | 'bike' | 'walk' | 'other';
     equipmentList?: string[];
+  lodging?: string;
     notes?: string;
     isPublic?: boolean;
   }
@@ -95,12 +101,15 @@ export async function savePlan(
       mountain_id: mountainId,
       title: data.title,
       description: data.description,
-      planned_date: data.plannedDate,
+  planned_date: data.plannedDate,
+  planned_start_date: data.plannedStartDate ?? data.plannedDate,
+  planned_end_date: data.plannedEndDate ?? data.plannedDate,
       estimated_duration: data.estimatedDuration,
       difficulty_level: data.difficultyLevel,
       route_plan: data.routePlan,
   transport_mode: data.transportMode,
       equipment_list: data.equipmentList,
+  lodging: data.lodging,
       notes: data.notes,
       is_public: data.isPublic || false,
     };
@@ -229,12 +238,15 @@ export async function updatePlan(
   data: {
     title?: string;
     description?: string;
-    planned_date?: string;
+  planned_date?: string;
+  planned_start_date?: string;
+  planned_end_date?: string;
     estimated_duration?: number;
     difficulty_level?: 'easy' | 'moderate' | 'hard';
     route_plan?: string;
   transport_mode?: 'car' | 'public' | 'taxi' | 'shuttle' | 'bike' | 'walk' | 'other';
     equipment_list?: string[];
+  lodging?: string;
     notes?: string;
     is_public?: boolean;
   }

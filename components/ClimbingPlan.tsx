@@ -17,11 +17,14 @@ interface ClimbingPlanProps {
 
 interface PlanData {
   date: string;
+  dateFrom?: string;
+  dateTo?: string;
   startTime: string;
   estimatedDuration: string;
   route: string;
   transportMode: 'car' | 'public' | 'taxi' | 'shuttle' | 'bike' | 'walk' | 'other';
   equipment: string[];
+  lodging?: string;
   notes: string;
 }
 
@@ -34,11 +37,14 @@ export default function ClimbingPlan({ mountainName, mountainId, difficulty, ele
   const [savedPlans, setSavedPlans] = useState<PlanWithMountain[]>([]);
   const [plan, setPlan] = useState<PlanData>({
     date: '',
+  dateFrom: '',
+  dateTo: '',
     startTime: '06:00',
     estimatedDuration: '6',
     route: '一般ルート',
   transportMode: 'public',
     equipment: [],
+  lodging: '',
     notes: ''
   });
 
@@ -124,10 +130,13 @@ export default function ClimbingPlan({ mountainName, mountainId, difficulty, ele
         title: `${mountainName}登山計画`,
         description: plan.notes,
         plannedDate: plan.date,
+  plannedStartDate: plan.dateFrom || plan.date,
+  plannedEndDate: plan.dateTo || plan.date,
         estimatedDuration: plan.estimatedDuration ? parseInt(plan.estimatedDuration) * 60 : undefined, // 時間を分に変換
         routePlan: plan.route,
   transportMode: plan.transportMode,
         equipmentList: plan.equipment.filter(item => item.trim() !== ''),
+  lodging: plan.lodging,
         notes: plan.notes,
         isPublic: false
       };
@@ -147,12 +156,15 @@ export default function ClimbingPlan({ mountainName, mountainId, difficulty, ele
   const handleEditPlan = useCallback((savedPlan: PlanWithTransport) => {
     // フォームに既存データを設定
     setPlan({
-      date: savedPlan.planned_date || '',
+  date: savedPlan.planned_date || '',
+  dateFrom: savedPlan.planned_start_date?.split('T')[0] || savedPlan.planned_date?.split('T')[0] || '',
+  dateTo: savedPlan.planned_end_date?.split('T')[0] || savedPlan.planned_date?.split('T')[0] || '',
       startTime: '06:00', // デフォルト値
       estimatedDuration: savedPlan.estimated_duration ? Math.round(savedPlan.estimated_duration / 60).toString() : '6',
       route: savedPlan.route_plan || '一般ルート',
   transportMode: savedPlan.transport_mode || 'public',
       equipment: savedPlan.equipment_list || [],
+  lodging: savedPlan.lodging || '',
       notes: savedPlan.notes || ''
     });
     
@@ -277,6 +289,11 @@ export default function ClimbingPlan({ mountainName, mountainId, difficulty, ele
                     </div>
                     
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm text-gray-600 mb-2">
+                      {(savedPlan.planned_start_date || savedPlan.planned_end_date) && (
+                        <div>
+                          <span className="font-medium">期間:</span> {(savedPlan.planned_start_date || savedPlan.planned_date)?.split('T')[0]} ~ {(savedPlan.planned_end_date || savedPlan.planned_date)?.split('T')[0]}
+                        </div>
+                      )}
                       {savedPlan.estimated_duration && (
                         <div>
                           <span className="font-medium">予想時間:</span> {Math.round(savedPlan.estimated_duration / 60)}時間
@@ -285,6 +302,16 @@ export default function ClimbingPlan({ mountainName, mountainId, difficulty, ele
                       <div>
                         <span className="font-medium">ルート:</span> {savedPlan.route_plan || '一般ルート'}
                       </div>
+                      {savedPlan.transport_mode && (
+                        <div>
+                          <span className="font-medium">交通:</span> {savedPlan.transport_mode}
+                        </div>
+                      )}
+                      {savedPlan.lodging && (
+                        <div className="col-span-2">
+                          <span className="font-medium">宿泊:</span> {savedPlan.lodging}
+                        </div>
+                      )}
                       {savedPlan.equipment_list && savedPlan.equipment_list.length > 0 && (
                         <div>
                           <span className="font-medium">装備:</span> {savedPlan.equipment_list.length}点
@@ -351,6 +378,23 @@ export default function ClimbingPlan({ mountainName, mountainId, difficulty, ele
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
                 required
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">期間（From/To）</label>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="date"
+                  value={plan.dateFrom}
+                  onChange={(e) => setPlan(prev => ({ ...prev, dateFrom: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                />
+                <input
+                  type="date"
+                  value={plan.dateTo}
+                  onChange={(e) => setPlan(prev => ({ ...prev, dateTo: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                />
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -443,6 +487,19 @@ export default function ClimbingPlan({ mountainName, mountainId, difficulty, ele
                 </label>
               ))}
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              宿泊地（任意）
+            </label>
+            <input
+              type="text"
+              value={plan.lodging}
+              onChange={(e) => setPlan(prev => ({ ...prev, lodging: e.target.value }))}
+              placeholder="山小屋〇〇、テント場△△ など"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+            />
           </div>
 
           <div>

@@ -53,13 +53,20 @@ export async function middleware(request: NextRequest) {
       },
     }
   );
-
-  // Refresh session if expired - required for Server Components
-  const { data: { session } } = await supabase.auth.getSession();
-
   const url = new URL(request.url);
   const isAdminPath = url.pathname.startsWith('/admin');
   const isAdminApi = url.pathname.startsWith('/api/admin');
+
+  // Only read session for admin routes; never crash on errors
+  let session: { user?: { email?: string | null } } | null = null;
+  try {
+    if (isAdminPath || isAdminApi) {
+      const { data } = await supabase.auth.getSession();
+      session = data.session;
+    }
+  } catch {
+    session = null;
+  }
 
   if ((isAdminPath || isAdminApi)) {
     const allowed = (process.env.ADMIN_EMAILS || '')
@@ -71,7 +78,7 @@ export async function middleware(request: NextRequest) {
       if (isAdminApi) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
-      // For page routes under /admin, redirect to /auth/error for better UX
+  // For page routes under /admin, redirect to /auth/error for better UX
   const redirectUrl = new URL('/auth/error', request.url);
   redirectUrl.searchParams.set('reason', 'forbidden');
       return NextResponse.redirect(redirectUrl);

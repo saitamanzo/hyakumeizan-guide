@@ -13,12 +13,15 @@ export default function EditPlan({ plan, onUpdate, onCancel }: EditPlanProps) {
   const [formData, setFormData] = useState({
     title: plan.title || '',
     description: plan.description || '',
-    planned_date: plan.planned_date?.split('T')[0] || '',
+  planned_date: plan.planned_date?.split('T')[0] || '',
+  planned_start_date: plan.planned_start_date?.split('T')[0] || plan.planned_date?.split('T')[0] || '',
+  planned_end_date: plan.planned_end_date?.split('T')[0] || plan.planned_date?.split('T')[0] || '',
     estimated_duration: plan.estimated_duration || 480, // 8時間をデフォルトに
     difficulty_level: plan.difficulty_level || 'moderate' as const,
     route_plan: plan.route_plan || '',
   transport_mode: plan.transport_mode || 'public',
     equipment_list: plan.equipment_list || [],
+  lodging: plan.lodging || '',
     notes: plan.notes || '',
     is_public: plan.is_public || false,
   });
@@ -134,6 +137,14 @@ export default function EditPlan({ plan, onUpdate, onCancel }: EditPlanProps) {
               onChange={(e) => handleChange('planned_date', e.target.value)}
               className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
             />
+          </div>
+          {/* 期間 From/To */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">期間（From/To）</label>
+            <div className="grid grid-cols-2 gap-2">
+              <input type="date" value={formData.planned_start_date} onChange={(e) => handleChange('planned_start_date', e.target.value)} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" />
+              <input type="date" value={formData.planned_end_date} onChange={(e) => handleChange('planned_end_date', e.target.value)} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" />
+            </div>
           </div>
 
           {/* 難易度 */}
@@ -276,6 +287,21 @@ export default function EditPlan({ plan, onUpdate, onCancel }: EditPlanProps) {
               rows={4}
               className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               placeholder="注意事項、緊急連絡先、保険情報など..."
+            />
+          </div>
+
+          {/* 宿泊地 */}
+          <div>
+            <label htmlFor="lodging" className="block text-sm font-medium text-gray-700 mb-1">
+              宿泊地（任意）
+            </label>
+            <input
+              type="text"
+              id="lodging"
+              value={formData.lodging}
+              onChange={(e) => handleChange('lodging', e.target.value)}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              placeholder="山小屋〇〇、テント場△△ など"
             />
           </div>
 

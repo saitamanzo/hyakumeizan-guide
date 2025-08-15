@@ -167,6 +167,11 @@ export default function ClimbsPage() {
                     </div>
                     <div className="mt-2 text-sm text-gray-500">
                       {climb.climb_date && new Date(climb.climb_date).toLocaleDateString('ja-JP')}
+                      {(climb.climb_start_date || climb.climb_end_date) && (
+                        <span className="ml-2">
+                          期間: {(climb.climb_start_date || climb.climb_date || '').split('T')[0]} ~ {(climb.climb_end_date || climb.climb_date || '').split('T')[0]}
+                        </span>
+                      )}
                     </div>
                   </div>
                   {/* 操作ボタン群（作成者のみ表示） */}
@@ -210,12 +215,24 @@ export default function ClimbsPage() {
         </div>
       )}
                 </div>
-                {climb.notes && (
+                {(climb.lodging || climb.notes) && (
                   <div className="mb-4">
-                    <dt className="text-sm font-medium text-gray-500">記録・感想</dt>
-                    <dd className="mt-1 text-sm text-gray-700 bg-gray-50 p-3 rounded-md">
-                      {climb.notes}
-                    </dd>
+                    {climb.lodging && (
+                      <div className="mb-2">
+                        <dt className="text-sm font-medium text-gray-500">宿泊地</dt>
+                        <dd className="mt-1 text-sm text-gray-700 bg-gray-50 p-2 rounded-md">
+                          {climb.lodging}
+                        </dd>
+                      </div>
+                    )}
+                    {climb.notes && (
+                      <>
+                        <dt className="text-sm font-medium text-gray-500">記録・感想</dt>
+                        <dd className="mt-1 text-sm text-gray-700 bg-gray-50 p-3 rounded-md">
+                          {climb.notes}
+                        </dd>
+                      </>
+                    )}
                   </div>
                 )}
                 {climb.photos && climb.photos.length > 0 && (

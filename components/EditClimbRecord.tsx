@@ -4,8 +4,15 @@ import React, { useState } from 'react';
 import { updateClimbRecord, ClimbRecordWithMountain } from '@/lib/climb-utils';
 import PhotoUpload, { UploadedPhoto } from './PhotoUpload';
 
+type ClimbRecordWithExtras = ClimbRecordWithMountain & {
+  climb_start_date?: string;
+  climb_end_date?: string;
+  transport_mode?: 'car' | 'public' | 'taxi' | 'shuttle' | 'bike' | 'walk' | 'other';
+  lodging?: string;
+};
+
 interface EditClimbRecordProps {
-  record: ClimbRecordWithMountain;
+  record: ClimbRecordWithExtras;
   onUpdate: (updatedRecord: ClimbRecordWithMountain) => void;
   onCancel: () => void;
 }
@@ -13,6 +20,8 @@ interface EditClimbRecordProps {
 export default function EditClimbRecord({ record, onUpdate, onCancel }: EditClimbRecordProps) {
   const [formData, setFormData] = useState({
     climb_date: record.climb_date?.split('T')[0] || '',
+    climb_start_date: record.climb_start_date?.split('T')[0] || record.climb_date?.split('T')[0] || '',
+    climb_end_date: record.climb_end_date?.split('T')[0] || record.climb_date?.split('T')[0] || '',
     weather_conditions: record.weather_conditions || '',
     notes: record.notes || '',
     difficulty_rating: record.difficulty_rating || 1,
@@ -20,6 +29,8 @@ export default function EditClimbRecord({ record, onUpdate, onCancel }: EditClim
     rating: 'rating' in record && typeof record.rating === 'number' ? record.rating : 5,
     route_name: 'route_name' in record && typeof record.route_name === 'string' ? record.route_name : '',
     companions: 'companions' in record && typeof record.companions === 'string' ? record.companions : '',
+    transport_mode: record.transport_mode || 'public',
+    lodging: record.lodging || '',
   });
   const [photos, setPhotos] = useState<UploadedPhoto[]>(record.photos?.map(p => ({
     id: p.id,
@@ -98,6 +109,14 @@ export default function EditClimbRecord({ record, onUpdate, onCancel }: EditClim
             <label htmlFor="climb_date" className="block text-sm font-medium text-gray-700 mb-1">登山日 *</label>
             <input type="date" id="climb_date" value={formData.climb_date} onChange={(e) => handleChange('climb_date', e.target.value)} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" required />
           </div>
+          {/* 期間 From/To */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">期間（From/To）</label>
+            <div className="grid grid-cols-2 gap-2">
+              <input type="date" value={formData.climb_start_date} onChange={(e) => handleChange('climb_start_date', e.target.value)} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" />
+              <input type="date" value={formData.climb_end_date} onChange={(e) => handleChange('climb_end_date', e.target.value)} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" />
+            </div>
+          </div>
           {/* 天気 */}
           <div>
             <label htmlFor="weather_conditions" className="block text-sm font-medium text-gray-700 mb-1">天気</label>
@@ -113,6 +132,24 @@ export default function EditClimbRecord({ record, onUpdate, onCancel }: EditClim
             </select>
           </div>
           {/* 難易度 */}
+          {/* 交通手段 */}
+          <div>
+            <label htmlFor="transport_mode" className="block text-sm font-medium text-gray-700 mb-1">交通手段</label>
+            <select id="transport_mode" value={formData.transport_mode} onChange={(e) => handleChange('transport_mode', e.target.value)} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+              <option value="public">公共交通機関</option>
+              <option value="car">自家用車</option>
+              <option value="taxi">タクシー</option>
+              <option value="shuttle">シャトル・バス</option>
+              <option value="bike">自転車</option>
+              <option value="walk">徒歩</option>
+              <option value="other">その他</option>
+            </select>
+          </div>
+          {/* 宿泊地 */}
+          <div>
+            <label htmlFor="lodging" className="block text-sm font-medium text-gray-700 mb-1">宿泊地（任意）</label>
+            <input type="text" id="lodging" value={formData.lodging} onChange={(e) => handleChange('lodging', e.target.value)} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" placeholder="山小屋〇〇、テント場△△ など" />
+          </div>
           <div>
             <label htmlFor="difficulty_rating" className="block text-sm font-medium text-gray-700 mb-1">難易度</label>
             <select id="difficulty_rating" value={formData.difficulty_rating} onChange={(e) => handleChange('difficulty_rating', parseInt(e.target.value))} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent">

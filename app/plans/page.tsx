@@ -253,17 +253,27 @@ export default function PlansPage() {
                   <div>
                     <dt className="text-sm font-medium text-gray-500">登山日</dt>
                     <dd className="mt-1 text-base text-gray-900">
-                      {plan.planned_date ? new Date(plan.planned_date).toLocaleDateString('ja-JP', { 
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        weekday: 'short'
-                      }) : '-'}
+                      {plan.planned_date
+                        ? new Date(plan.planned_date).toLocaleDateString('ja-JP', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            weekday: 'short'
+                          })
+                        : '-'}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-sm font-medium text-gray-500">出発時刻</dt>
-                    <dd className="mt-1 text-base text-gray-900">{plan.route_plan || '-'}</dd>
+                    <dt className="text-sm font-medium text-gray-500">期間</dt>
+                    <dd className="mt-1 text-base text-gray-900">
+                      {(plan.planned_start_date || plan.planned_end_date)
+                        ? `${(plan.planned_start_date || plan.planned_date || '').split('T')[0]} ~ ${(plan.planned_end_date || plan.planned_date || '').split('T')[0]}`
+                        : '-'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">宿泊地</dt>
+                    <dd className="mt-1 text-base text-gray-900">{plan.lodging || '-'}</dd>
                   </div>
                   <div>
                     <dt className="text-sm font-medium text-gray-500">予想所要時間</dt>
