@@ -22,13 +22,14 @@ CREATE INDEX IF NOT EXISTS idx_likes_user_id ON likes(user_id);
 -- Row Level Security (RLS) ポリシーを設定
 ALTER TABLE likes ENABLE ROW LEVEL SECURITY;
 
--- 自分のいいねは見ることができる
-CREATE POLICY IF NOT EXISTS "Users can view their own likes"
+-- 既存ポリシーがあれば削除
+DROP POLICY IF EXISTS "Users can view their own likes" ON likes;
+CREATE POLICY "Users can view their own likes"
   ON likes FOR SELECT
   USING (auth.uid() = user_id);
 
--- 誰でもいいねの数は見ることができる（公開記録・計画のみ）
-CREATE POLICY IF NOT EXISTS "Anyone can view likes on public content"
+DROP POLICY IF EXISTS "Anyone can view likes on public content" ON likes;
+CREATE POLICY "Anyone can view likes on public content"
   ON likes FOR SELECT
   USING (
     (climb_id IS NOT NULL AND EXISTS (
@@ -40,13 +41,13 @@ CREATE POLICY IF NOT EXISTS "Anyone can view likes on public content"
     ))
   );
 
--- ログインユーザーはいいねを追加できる
-CREATE POLICY IF NOT EXISTS "Authenticated users can insert likes"
+DROP POLICY IF EXISTS "Authenticated users can insert likes" ON likes;
+CREATE POLICY "Authenticated users can insert likes"
   ON likes FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
--- 自分のいいねは削除できる
-CREATE POLICY IF NOT EXISTS "Users can delete their own likes"
+DROP POLICY IF EXISTS "Users can delete their own likes" ON likes;
+CREATE POLICY "Users can delete their own likes"
   ON likes FOR DELETE
   USING (auth.uid() = user_id);
 
