@@ -9,6 +9,7 @@ DROP POLICY IF EXISTS "Allow public read access to photos" ON storage.objects;
 DROP POLICY IF EXISTS "Allow users to delete their own photos" ON storage.objects;
 
 -- Allow authenticated users to upload photos
+DROP POLICY IF EXISTS "Allow authenticated users to upload photos" ON storage.objects;
 CREATE POLICY "Allow authenticated users to upload photos" ON storage.objects
 FOR INSERT WITH CHECK (
     bucket_id = 'climb-photos' 
@@ -16,10 +17,12 @@ FOR INSERT WITH CHECK (
 );
 
 -- Allow public read access to photos
+DROP POLICY IF EXISTS "Allow public read access to photos" ON storage.objects;
 CREATE POLICY "Allow public read access to photos" ON storage.objects
 FOR SELECT USING (bucket_id = 'climb-photos');
 
 -- Allow users to delete their own photos
+DROP POLICY IF EXISTS "Allow users to delete their own photos" ON storage.objects;
 CREATE POLICY "Allow users to delete their own photos" ON storage.objects
 FOR DELETE USING (
     bucket_id = 'climb-photos' 
@@ -83,17 +86,21 @@ DROP POLICY IF EXISTS "Users can update their own climb photos" ON climb_photos;
 DROP POLICY IF EXISTS "Users can delete their own climb photos" ON climb_photos;
 
 -- Users can view all climb photos
+DROP POLICY IF EXISTS "Users can view all climb photos" ON climb_photos;
 CREATE POLICY "Users can view all climb photos" ON climb_photos
 FOR SELECT USING (true);
 
 -- Users can insert their own climb photos
+DROP POLICY IF EXISTS "Users can insert their own climb photos" ON climb_photos;
 CREATE POLICY "Users can insert their own climb photos" ON climb_photos
 FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 -- Users can update their own climb photos
+DROP POLICY IF EXISTS "Users can update their own climb photos" ON climb_photos;
 CREATE POLICY "Users can update their own climb photos" ON climb_photos
 FOR UPDATE USING (auth.uid() = user_id);
 
 -- Users can delete their own climb photos
+DROP POLICY IF EXISTS "Users can delete their own climb photos" ON climb_photos;
 CREATE POLICY "Users can delete their own climb photos" ON climb_photos
 FOR DELETE USING (auth.uid() = user_id);

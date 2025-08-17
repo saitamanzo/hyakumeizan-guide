@@ -16,10 +16,12 @@ create index if not exists idx_reports_reporter on public.reports (reporter_id);
 -- RLS（通報はログインユーザーのみ作成可、読取りは管理者想定で一旦全拒否）
 alter table public.reports enable row level security;
 
+drop policy if exists reports_insert_self on public.reports;
 create policy reports_insert_self on public.reports
   for insert to authenticated
   with check (reporter_id = auth.uid());
 
+drop policy if exists reports_select_admin_only on public.reports;
 create policy reports_select_admin_only on public.reports
   for select using (false);
 

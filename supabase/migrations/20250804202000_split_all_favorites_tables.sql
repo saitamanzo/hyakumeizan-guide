@@ -29,34 +29,43 @@ CREATE TABLE IF NOT EXISTS plan_favorites (
 
 -- RLS: 自分の分だけ見れる
 ALTER TABLE mountain_favorites ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view their own mountain favorites" ON mountain_favorites;
 CREATE POLICY "Users can view their own mountain favorites"
   ON mountain_favorites FOR SELECT
   USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can insert their own mountain favorites" ON mountain_favorites;
 CREATE POLICY "Users can insert their own mountain favorites"
   ON mountain_favorites FOR INSERT
   WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can delete their own mountain favorites" ON mountain_favorites;
 CREATE POLICY "Users can delete their own mountain favorites"
   ON mountain_favorites FOR DELETE
   USING (auth.uid() = user_id);
 
 ALTER TABLE climb_favorites ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view their own climb favorites" ON climb_favorites;
 CREATE POLICY "Users can view their own climb favorites"
   ON climb_favorites FOR SELECT
   USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can insert their own climb favorites" ON climb_favorites;
 CREATE POLICY "Users can insert their own climb favorites"
   ON climb_favorites FOR INSERT
   WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can delete their own climb favorites" ON climb_favorites;
 CREATE POLICY "Users can delete their own climb favorites"
   ON climb_favorites FOR DELETE
   USING (auth.uid() = user_id);
 
 ALTER TABLE plan_favorites ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view their own plan favorites" ON plan_favorites;
 CREATE POLICY "Users can view their own plan favorites"
   ON plan_favorites FOR SELECT
   USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can insert their own plan favorites" ON plan_favorites;
 CREATE POLICY "Users can insert their own plan favorites"
   ON plan_favorites FOR INSERT
   WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can delete their own plan favorites" ON plan_favorites;
 CREATE POLICY "Users can delete their own plan favorites"
   ON plan_favorites FOR DELETE
   USING (auth.uid() = user_id);

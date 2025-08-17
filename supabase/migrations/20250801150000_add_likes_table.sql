@@ -1,5 +1,5 @@
 -- いいね機能のためのテーブル作成
-CREATE TABLE likes (
+CREATE TABLE IF NOT EXISTS likes (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   climb_id UUID REFERENCES climbs(id) ON DELETE CASCADE,

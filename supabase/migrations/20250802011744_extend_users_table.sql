@@ -10,10 +10,12 @@ insert into storage.buckets (id, name) values ('avatars', 'avatars')
 on conflict do nothing;
 
 -- ストレージのセキュリティ設定
+drop policy if exists "Avatar images are publicly accessible" on storage.objects;
 create policy "Avatar images are publicly accessible"
   on storage.objects for select
   using ( bucket_id = 'avatars' );
 
+drop policy if exists "Users can upload their own avatar" on storage.objects;
 create policy "Users can upload their own avatar"
   on storage.objects for insert
   with check ( bucket_id = 'avatars' AND auth.uid() = owner );

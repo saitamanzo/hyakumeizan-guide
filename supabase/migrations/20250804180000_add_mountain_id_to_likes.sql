@@ -16,10 +16,25 @@ BEGIN
   END IF;
 END $$;
 
--- 新しいUNIQUE制約を追加
-ALTER TABLE likes ADD CONSTRAINT likes_user_id_mountain_id_key UNIQUE(user_id, mountain_id);
-ALTER TABLE likes ADD CONSTRAINT likes_user_id_climb_id_key UNIQUE(user_id, climb_id);
-ALTER TABLE likes ADD CONSTRAINT likes_user_id_plan_id_key UNIQUE(user_id, plan_id);
+-- 新しいUNIQUE制約を追加（存在チェック付き）
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'likes_user_id_mountain_id_key'
+  ) THEN
+    ALTER TABLE likes ADD CONSTRAINT likes_user_id_mountain_id_key UNIQUE(user_id, mountain_id);
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'likes_user_id_climb_id_key'
+  ) THEN
+    ALTER TABLE likes ADD CONSTRAINT likes_user_id_climb_id_key UNIQUE(user_id, climb_id);
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'likes_user_id_plan_id_key'
+  ) THEN
+    ALTER TABLE likes ADD CONSTRAINT likes_user_id_plan_id_key UNIQUE(user_id, plan_id);
+  END IF;
+END $$;
 
 -- mountain_id/climb_id/plan_idのうち1つだけ設定されるように制約
 ALTER TABLE likes DROP CONSTRAINT IF EXISTS likes_climb_id_plan_id_check;

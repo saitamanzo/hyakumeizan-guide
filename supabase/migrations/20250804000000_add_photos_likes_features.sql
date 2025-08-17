@@ -76,12 +76,14 @@ CREATE INDEX IF NOT EXISTS idx_climbing_plans_public ON climbing_plans(is_public
 CREATE INDEX IF NOT EXISTS idx_climbs_public ON climbs(is_public, published_at);
 
 -- トリガーの追加
-CREATE TRIGGER IF NOT EXISTS update_climb_photos_updated_at
+DROP TRIGGER IF EXISTS update_climb_photos_updated_at ON climb_photos;
+CREATE TRIGGER update_climb_photos_updated_at
     BEFORE UPDATE ON climb_photos
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER IF NOT EXISTS update_climbing_plans_updated_at
+DROP TRIGGER IF EXISTS update_climbing_plans_updated_at ON climbing_plans;
+CREATE TRIGGER update_climbing_plans_updated_at
     BEFORE UPDATE ON climbing_plans
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
@@ -121,9 +123,11 @@ ALTER TABLE likes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE climbing_plans ENABLE ROW LEVEL SECURITY;
 
 -- climb_photos のRLSポリシー
+DROP POLICY IF EXISTS "写真は作成者のみ管理可能" ON climb_photos;
 CREATE POLICY "写真は作成者のみ管理可能" ON climb_photos
     FOR ALL USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "公開された登山記録の写真は全員が閲覧可能" ON climb_photos;
 CREATE POLICY "公開された登山記録の写真は全員が閲覧可能" ON climb_photos
     FOR SELECT USING (
         EXISTS (
@@ -134,19 +138,24 @@ CREATE POLICY "公開された登山記録の写真は全員が閲覧可能" ON 
     );
 
 -- likes のRLSポリシー
+DROP POLICY IF EXISTS "いいねは全員が閲覧可能" ON likes;
 CREATE POLICY "いいねは全員が閲覧可能" ON likes
     FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "いいねは認証ユーザーが管理可能" ON likes;
 CREATE POLICY "いいねは認証ユーザーが管理可能" ON likes
     FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "いいねは本人のみ削除可能" ON likes;
 CREATE POLICY "いいねは本人のみ削除可能" ON likes
     FOR DELETE USING (auth.uid() = user_id);
 
 -- climbing_plans のRLSポリシー
+DROP POLICY IF EXISTS "登山計画は作成者のみ管理可能" ON climbing_plans;
 CREATE POLICY "登山計画は作成者のみ管理可能" ON climbing_plans
     FOR ALL USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "公開された登山計画は全員が閲覧可能" ON climbing_plans;
 CREATE POLICY "公開された登山計画は全員が閲覧可能" ON climbing_plans
     FOR SELECT USING (is_public = true);
 
@@ -156,14 +165,18 @@ VALUES ('climb-photos', 'climb-photos', true)
 ON CONFLICT (id) DO NOTHING;
 
 -- ストレージのRLSポリシー
-CREATE POLICY IF NOT EXISTS "写真アップロードは認証ユーザーのみ" ON storage.objects
+DROP POLICY IF EXISTS "写真アップロードは認証ユーザーのみ" ON storage.objects;
+CREATE POLICY "写真アップロードは認証ユーザーのみ" ON storage.objects
     FOR INSERT WITH CHECK (bucket_id = 'climb-photos' AND auth.uid()::text = (storage.foldername(name))[1]);
 
-CREATE POLICY IF NOT EXISTS "写真閲覧は全員可能" ON storage.objects
+DROP POLICY IF EXISTS "写真閲覧は全員可能" ON storage.objects;
+CREATE POLICY "写真閲覧は全員可能" ON storage.objects
     FOR SELECT USING (bucket_id = 'climb-photos');
 
-CREATE POLICY IF NOT EXISTS "写真削除は作成者のみ" ON storage.objects
+DROP POLICY IF EXISTS "写真削除は作成者のみ" ON storage.objects;
+CREATE POLICY "写真削除は作成者のみ" ON storage.objects
     FOR DELETE USING (bucket_id = 'climb-photos' AND auth.uid()::text = (storage.foldername(name))[1]);
 
-CREATE POLICY IF NOT EXISTS "写真更新は作成者のみ" ON storage.objects
+DROP POLICY IF EXISTS "写真更新は作成者のみ" ON storage.objects;
+CREATE POLICY "写真更新は作成者のみ" ON storage.objects
     FOR UPDATE USING (bucket_id = 'climb-photos' AND auth.uid()::text = (storage.foldername(name))[1]);
