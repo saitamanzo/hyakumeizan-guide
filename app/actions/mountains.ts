@@ -9,7 +9,10 @@ export async function getMountains(): Promise<Mountain[]> {
   const { data: mountains, error } = await supabase
     .from('mountains')
     .select('*')
-    .order('name');
+  // カテゴリ → カテゴリ内順 → 名前 の優先で並べる（NULLは最後）
+  .order('category', { ascending: true, nullsFirst: false })
+  .order('category_order', { ascending: true, nullsFirst: false })
+  .order('name', { ascending: true });
     
   if (error) {
     console.error('Error fetching mountains:', error);

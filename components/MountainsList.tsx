@@ -15,7 +15,7 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
   const [mountains] = useState<Mountain[]>(initialMountains);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<'name' | 'elevation' | 'difficulty'>('name');
+  const [sortBy, setSortBy] = useState<'name' | 'elevation' | 'difficulty' | 'category'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [loadingFavorites, setLoadingFavorites] = useState(true);
@@ -100,7 +100,7 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
 
   useEffect(() => {
     setIsLoading(true);
-    
+
     const filterMountains = () => {
       let filtered = mountains;
 
@@ -146,7 +146,7 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
       // ソート
       const sorted = [...filtered].sort((a, b) => {
         let comparison = 0;
-        
+
         switch (sortBy) {
           case 'name':
             comparison = a.name.localeCompare(b.name, 'ja');
@@ -154,14 +154,22 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
           case 'elevation':
             comparison = a.elevation - b.elevation;
             break;
-          case 'difficulty':
-            const difficultyOrder = { '初級': 1, '中級': 2, '上級': 3 };
-            const aLevel = difficultyOrder[a.difficulty_level as keyof typeof difficultyOrder] || 0;
-            const bLevel = difficultyOrder[b.difficulty_level as keyof typeof difficultyOrder] || 0;
+          case 'difficulty': {
+            const difficultyOrder: Record<string, number> = { 初級: 1, 中級: 2, 上級: 3 };
+            const aLevel = a.difficulty_level ? difficultyOrder[a.difficulty_level] ?? 0 : 0;
+            const bLevel = b.difficulty_level ? difficultyOrder[b.difficulty_level] ?? 0 : 0;
             comparison = aLevel - bLevel;
             break;
+          }
+          case 'category': {
+            // NULL は最後扱い
+            const aCat = (a.category ?? 999) * 100 + (a.category_order ?? 99);
+            const bCat = (b.category ?? 999) * 100 + (b.category_order ?? 99);
+            comparison = aCat - bCat;
+            break;
+          }
         }
-        
+
         return sortOrder === 'asc' ? comparison : -comparison;
       });
 
@@ -250,6 +258,11 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
                         {mountain.elevation}m
                       </span>
                     </div>
+                    {mountain.category !== null && mountain.category !== undefined && (
+                      <p className="text-xs text-gray-500 mb-1">
+                        カテゴリ: {mountain.category} / 順位: {mountain.category_order ?? '-'}
+                      </p>
+                    )}
                     <p className="text-sm text-gray-600 mb-2">
                       {mountain.prefecture}
                     </p>
@@ -369,14 +382,15 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
           <div className="flex flex-wrap gap-4 items-center">
             <div className="flex items-center space-x-2">
               <label className="text-sm font-medium text-gray-700">並び順:</label>
-              <select 
+              <select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as 'name' | 'elevation' | 'difficulty')}
+                onChange={(e) => setSortBy(e.target.value as 'name' | 'elevation' | 'difficulty' | 'category')}
                 className="px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500"
               >
                 <option value="name">山名順</option>
                 <option value="elevation">標高順</option>
                 <option value="difficulty">難易度順</option>
+                <option value="category">カテゴリ順</option>
               </select>
             </div>
             <div className="flex items-center space-x-2">
@@ -461,7 +475,7 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
                       </svg>
                     )}
                   </button>
-                  
+
                   {/* 山の画像 */}
                   <div className="h-48 bg-gradient-to-br from-green-400 to-blue-500"></div>
                   <div className="p-6">
@@ -473,6 +487,11 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
                         {mountain.elevation}m
                       </span>
                     </div>
+                    {mountain.category !== null && mountain.category !== undefined && (
+                      <p className="text-xs text-gray-500 mb-1">
+                        カテゴリ: {mountain.category} / 順位: {mountain.category_order ?? '-'}
+                      </p>
+                    )}
                     <p className="text-sm text-gray-600 mb-2">
                       {mountain.prefecture}
                     </p>

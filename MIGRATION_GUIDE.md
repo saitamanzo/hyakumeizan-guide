@@ -169,6 +169,18 @@ SELECT policyname, tablename FROM pg_policies WHERE tablename = 'climb_photos';
 - 依存するテーブル（climbs, users）が存在することを確認
 - 先に基本スキーマのマイグレーションを実行
 
+### エラー: "relation '..." already exists"（既存DBに初期スキーマがある）
+- 既存の本番/開発DBに基本テーブルが既にある場合、初期マイグレーションの`CREATE TABLE`が再実行されて失敗します。
+- 対処1（推奨）: 既存DBに合わせて初期マイグレーションを冪等化（本リポジトリは`IF NOT EXISTS`と`DROP TRIGGER IF EXISTS`を付与済み）。最新の`main`に更新後、再度`supabase db push`を実行。
+- 対処2: Supabase DashboardのSQL Editorで、新しく追加された差分マイグレーションのみを手動実行（例: `20250817090000_add_mountain_category.sql`）。
+- 対処3: CLIでプロジェクトを`link`し、`db pull`で現状スキーマを取得してから差分を管理する運用に切り替える。
+
+```bash
+supabase link --project-ref YOUR_PROJECT_REF
+supabase db pull   # 既存スキーマをローカルに同期
+supabase db push   # その後の差分を適用
+```
+
 ### エラー: "bucket already exists"
 - `ON CONFLICT (id) DO NOTHING` により無視される
 - 既存bucketがある場合は正常

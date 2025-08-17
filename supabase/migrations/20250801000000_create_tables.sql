@@ -1,5 +1,5 @@
--- mountainsテーブル - 百名山の基本情報
-CREATE TABLE mountains (
+-- 既存環境との整合のため IF NOT EXISTS を付与
+CREATE TABLE IF NOT EXISTS mountains (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,          -- 山の名前（例：富士山）
     name_kana VARCHAR(255),              -- 読み仮名（例：フジサン）
@@ -13,8 +13,7 @@ CREATE TABLE mountains (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
--- routesテーブル - 各山の登山ルート情報
-CREATE TABLE routes (
+CREATE TABLE IF NOT EXISTS routes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     mountain_id UUID REFERENCES mountains(id) ON DELETE CASCADE,  -- 関連する山のID
     name VARCHAR(255) NOT NULL,          -- ルート名（例：吉田ルート）
@@ -29,8 +28,7 @@ CREATE TABLE routes (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
--- usersテーブル - ユーザー情報（Supabase認証と連携）
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY REFERENCES auth.users ON DELETE CASCADE,  -- Supabase認証のユーザーID
     display_name VARCHAR(255),           -- 表示名
     biography TEXT,                      -- 自己紹介
@@ -40,8 +38,7 @@ CREATE TABLE users (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
--- climbsテーブル - ユーザーの登山記録
-CREATE TABLE climbs (
+CREATE TABLE IF NOT EXISTS climbs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,         -- 登った人のID
     mountain_id UUID REFERENCES mountains(id) ON DELETE CASCADE, -- 登った山のID
@@ -56,8 +53,7 @@ CREATE TABLE climbs (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
--- reviewsテーブル - 山やルートのレビュー
-CREATE TABLE reviews (
+CREATE TABLE IF NOT EXISTS reviews (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,         -- レビュー投稿者のID
     mountain_id UUID REFERENCES mountains(id) ON DELETE CASCADE, -- レビュー対象の山のID
@@ -68,13 +64,12 @@ CREATE TABLE reviews (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
--- パフォーマンス向上のためのインデックス
-CREATE INDEX idx_mountains_name ON mountains(name);
-CREATE INDEX idx_routes_mountain_id ON routes(mountain_id);
-CREATE INDEX idx_climbs_user_id ON climbs(user_id);
-CREATE INDEX idx_climbs_mountain_id ON climbs(mountain_id);
-CREATE INDEX idx_reviews_mountain_id ON reviews(mountain_id);
-CREATE INDEX idx_reviews_route_id ON reviews(route_id);
+CREATE INDEX IF NOT EXISTS idx_mountains_name ON mountains(name);
+CREATE INDEX IF NOT EXISTS idx_routes_mountain_id ON routes(mountain_id);
+CREATE INDEX IF NOT EXISTS idx_climbs_user_id ON climbs(user_id);
+CREATE INDEX IF NOT EXISTS idx_climbs_mountain_id ON climbs(mountain_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_mountain_id ON reviews(mountain_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_route_id ON reviews(route_id);
 
 -- updated_at列を自動更新するためのトリガー
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -86,26 +81,32 @@ END;
 $$ language 'plpgsql';
 
 -- 各テーブルにトリガーを設定
+-- 既存トリガーがあれば一旦削除してから作成
+DROP TRIGGER IF EXISTS update_mountains_updated_at ON mountains;
 CREATE TRIGGER update_mountains_updated_at
     BEFORE UPDATE ON mountains
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_routes_updated_at ON routes;
 CREATE TRIGGER update_routes_updated_at
     BEFORE UPDATE ON routes
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
 CREATE TRIGGER update_users_updated_at
     BEFORE UPDATE ON users
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_climbs_updated_at ON climbs;
 CREATE TRIGGER update_climbs_updated_at
     BEFORE UPDATE ON climbs
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_reviews_updated_at ON reviews;
 CREATE TRIGGER update_reviews_updated_at
     BEFORE UPDATE ON reviews
     FOR EACH ROW

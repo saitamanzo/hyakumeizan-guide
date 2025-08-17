@@ -42,6 +42,8 @@ export default function AdminMountainDetailPage({ params }: { params: Promise<Pa
         <div>説明: {mountain.description ?? ""}</div>
         <div>ベストシーズン: {mountain.best_season ?? ""}</div>
         <div>難易度: {mountain.difficulty_level ?? ""}</div>
+  <div>カテゴリ: {mountain.category ?? '-'}</div>
+  <div>カテゴリ内順: {mountain.category_order ?? '-'}</div>
         <div>緯度: {mountain.latitude ?? ""}</div>
         <div>経度: {mountain.longitude ?? ""}</div>
         <div>写真URL: {mountain.photo_url ?? ""}</div>

@@ -38,6 +38,32 @@ export default function MountainForm({ mode, initialData = {}, onSubmit }: Mount
         <label>山名</label>
         <input name="name" value={form.name || ""} onChange={handleChange} className="border px-2 py-1 w-full" required />
       </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label>カテゴリ（0-9）</label>
+          <input
+            name="category"
+            type="number"
+            min={0}
+            max={9}
+            value={form.category ?? ''}
+            onChange={handleChange}
+            className="border px-2 py-1 w-full"
+          />
+        </div>
+        <div>
+          <label>カテゴリ内順（0-99）</label>
+          <input
+            name="category_order"
+            type="number"
+            min={0}
+            max={99}
+            value={form.category_order ?? ''}
+            onChange={handleChange}
+            className="border px-2 py-1 w-full"
+          />
+        </div>
+      </div>
       <div>
         <label>山名（かな）</label>
         <input name="name_kana" value={form.name_kana || ""} onChange={handleChange} className="border px-2 py-1 w-full" />
