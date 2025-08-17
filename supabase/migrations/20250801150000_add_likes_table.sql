@@ -15,9 +15,9 @@ CREATE TABLE likes (
 );
 
 -- インデックスを作成（パフォーマンス向上のため）
-CREATE INDEX idx_likes_climb_id ON likes(climb_id);
-CREATE INDEX idx_likes_plan_id ON likes(plan_id);
-CREATE INDEX idx_likes_user_id ON likes(user_id);
+CREATE INDEX IF NOT EXISTS idx_likes_climb_id ON likes(climb_id);
+CREATE INDEX IF NOT EXISTS idx_likes_plan_id ON likes(plan_id);
+CREATE INDEX IF NOT EXISTS idx_likes_user_id ON likes(user_id);
 
 -- Row Level Security (RLS) ポリシーを設定
 ALTER TABLE likes ENABLE ROW LEVEL SECURITY;
