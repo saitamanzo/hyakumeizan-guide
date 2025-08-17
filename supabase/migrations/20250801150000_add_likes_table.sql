@@ -23,12 +23,12 @@ CREATE INDEX IF NOT EXISTS idx_likes_user_id ON likes(user_id);
 ALTER TABLE likes ENABLE ROW LEVEL SECURITY;
 
 -- 自分のいいねは見ることができる
-CREATE POLICY "Users can view their own likes"
+CREATE POLICY IF NOT EXISTS "Users can view their own likes"
   ON likes FOR SELECT
   USING (auth.uid() = user_id);
 
 -- 誰でもいいねの数は見ることができる（公開記録・計画のみ）
-CREATE POLICY "Anyone can view likes on public content"
+CREATE POLICY IF NOT EXISTS "Anyone can view likes on public content"
   ON likes FOR SELECT
   USING (
     (climb_id IS NOT NULL AND EXISTS (
@@ -41,17 +41,17 @@ CREATE POLICY "Anyone can view likes on public content"
   );
 
 -- ログインユーザーはいいねを追加できる
-CREATE POLICY "Authenticated users can insert likes"
+CREATE POLICY IF NOT EXISTS "Authenticated users can insert likes"
   ON likes FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
 -- 自分のいいねは削除できる
-CREATE POLICY "Users can delete their own likes"
+CREATE POLICY IF NOT EXISTS "Users can delete their own likes"
   ON likes FOR DELETE
   USING (auth.uid() = user_id);
 
 -- 便利なビューを作成（いいね数の集計用）
-CREATE VIEW climb_likes_count AS
+CREATE OR REPLACE VIEW climb_likes_count AS
 SELECT 
   climb_id,
   COUNT(*) AS like_count
@@ -59,7 +59,7 @@ FROM likes
 WHERE climb_id IS NOT NULL
 GROUP BY climb_id;
 
-CREATE VIEW plan_likes_count AS
+CREATE OR REPLACE VIEW plan_likes_count AS
 SELECT 
   plan_id,
   COUNT(*) AS like_count
