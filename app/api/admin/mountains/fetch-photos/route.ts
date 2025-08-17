@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 
 // 簡易: Wikipedia/Wikimediaから各山の代表画像を1枚取得して mountains.photo_url を更新
 // 注意: 本APIは管理者のみ実行可。過剰な呼び出しはWikimediaのレート制限に配慮してください。
@@ -55,7 +56,8 @@ export async function POST(request: Request) {
   const force = Boolean(body.force)
 
   // 効率化: 通常は photo_url IS NULL の行のみを対象にする（force時は全件対象）
-  const baseQuery = supabase
+  const service = process.env.SUPABASE_SERVICE_ROLE_KEY ? createServiceClient() : supabase
+  const baseQuery = service
     .from('mountains')
     .select('id,name,photo_url')
     .order('name', { ascending: true })
@@ -96,15 +98,23 @@ export async function POST(request: Request) {
   const toApply = updates.filter((u): u is { id: string, photo_url: string } => Boolean(u))
 
   if (dryRun) {
-    return NextResponse.json({ success: true, dryRun: true, force, updates: toApply }, { status: 200 })
+    return NextResponse.json({ success: true, dryRun: true, force, candidates: mountains?.length ?? 0, plannedUpdates: toApply.length }, { status: 200 })
   }
 
+  let applied = 0
+  const failed: Array<{ id: string; error: string }> = []
   for (const u of toApply) {
-    const { error: upErr } = await supabase.from('mountains').update({ photo_url: u.photo_url }).eq('id', u.id)
+    const { error: upErr } = await service
+      .from('mountains')
+      .update({ photo_url: u.photo_url })
+      .eq('id', u.id)
     if (upErr) {
       console.warn('update failed', u.id, upErr.message)
+      failed.push({ id: u.id, error: upErr.message })
+    } else {
+      applied += 1
     }
   }
 
-  return NextResponse.json({ success: true, force, applied: toApply.length }, { status: 200 })
+  return NextResponse.json({ success: true, force, attempted: toApply.length, applied, failed }, { status: 200 })
 }

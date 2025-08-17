@@ -314,6 +314,7 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                         className="object-cover"
                         priority={false}
+                        unoptimized={process.env.NEXT_PUBLIC_IMAGE_UNOPTIMIZED === 'true'}
                       />
                     </div>
                   ) : (
@@ -556,6 +557,7 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                         className="object-cover"
                         priority={false}
+                        unoptimized={process.env.NEXT_PUBLIC_IMAGE_UNOPTIMIZED === 'true'}
                       />
                     </div>
                   ) : (

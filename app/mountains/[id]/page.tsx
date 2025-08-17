@@ -69,12 +69,13 @@ export default async function MountainPage({
           <div className="relative pb-8">
             <div className="relative h-64 w-full overflow-hidden rounded-lg">
               {coverUrl ? (
-                <Image
+                  <Image
                   src={coverUrl}
                   alt={`${mountain.name} の写真`}
                   fill
                   sizes="100vw"
                   className="object-cover"
+                    unoptimized={process.env.NEXT_PUBLIC_IMAGE_UNOPTIMIZED === 'true'}
                   priority
                 />
               ) : (
