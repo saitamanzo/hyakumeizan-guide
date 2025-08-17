@@ -11,6 +11,10 @@ export type Mountain = {
   latitude: number | null;
   longitude: number | null;
   photo_url: string | null;
+  // 1桁のカテゴリ（0-9）
+  category: number | null;
+  // 2桁のカテゴリ内順（0-99）
+  category_order: number | null;
   created_at: string;
   updated_at: string;
 }
