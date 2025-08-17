@@ -1,20 +1,8 @@
 -- likesテーブルにmountain_idカラムを追加し、山単体のお気に入りをサポート
 ALTER TABLE likes ADD COLUMN IF NOT EXISTS mountain_id UUID REFERENCES mountains(id) ON DELETE CASCADE;
 
--- 既存のUNIQUE制約を削除（必要なら）
-DO $$
-BEGIN
-  IF EXISTS (
-    SELECT 1 FROM pg_constraint WHERE conname = 'likes_user_id_climb_id_key'
-  ) THEN
-    ALTER TABLE likes DROP CONSTRAINT likes_user_id_climb_id_key;
-  END IF;
-  IF EXISTS (
-    SELECT 1 FROM pg_constraint WHERE conname = 'likes_user_id_plan_id_key'
-  ) THEN
-    ALTER TABLE likes DROP CONSTRAINT likes_user_id_plan_id_key;
-  END IF;
-END $$;
+ALTER TABLE likes DROP CONSTRAINT IF EXISTS likes_user_id_climb_id_key;
+ALTER TABLE likes DROP CONSTRAINT IF EXISTS likes_user_id_plan_id_key;
 
 -- 新しいUNIQUE制約を追加（存在チェック付き）
 DO $$
