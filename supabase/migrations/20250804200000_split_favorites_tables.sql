@@ -48,4 +48,9 @@ CREATE POLICY "Users can delete their own plan favorites"
   USING (auth.uid() = user_id);
 
 -- 旧likesテーブルをリネーム（バックアップ用途）
-ALTER TABLE IF EXISTS likes RENAME TO legacy_likes;
+DO $$
+BEGIN
+  IF to_regclass('public.legacy_likes') IS NULL AND to_regclass('public.likes') IS NOT NULL THEN
+    ALTER TABLE likes RENAME TO legacy_likes;
+  END IF;
+END $$;
