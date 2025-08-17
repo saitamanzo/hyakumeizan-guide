@@ -43,6 +43,10 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
       // すでに upload.wikimedia.org の直リンクならそのまま
       if (u.hostname === 'upload.wikimedia.org') return url;
       // Wikipedia/Commons のページURLを Special:FilePath に変換（ファイルページ or media アンカーのみ）
+      // すでに Special:FilePath の場合はそのまま返す
+      if ((u.hostname.endsWith('wikipedia.org') || u.hostname.endsWith('wikimedia.org')) && /\/wiki\/Special:FilePath\//.test(u.pathname)) {
+        return url;
+      }
       if ((u.hostname.endsWith('wikipedia.org') || u.hostname.endsWith('wikimedia.org')) && u.pathname.startsWith('/wiki/')) {
         const fileFromHash = u.hash && u.hash.startsWith('#/media/') ? decodeURIComponent(u.hash.replace('#/media/', '')) : '';
         const fileFromPath = decodeURIComponent(u.pathname.replace('/wiki/', ''));

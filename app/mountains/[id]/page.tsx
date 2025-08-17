@@ -38,6 +38,9 @@ export default async function MountainPage({
         const u = new URL(url);
         if (u.hostname === 'upload.wikimedia.org') return url;
         if ((u.hostname.endsWith('wikipedia.org') || u.hostname.endsWith('wikimedia.org')) && u.pathname.startsWith('/wiki/')) {
+          if (/\/wiki\/Special:FilePath\//.test(u.pathname)) {
+            return url;
+          }
           const fileFromHash = u.hash && u.hash.startsWith('#/media/') ? decodeURIComponent(u.hash.replace('#/media/', '')) : '';
           const fileFromPath = decodeURIComponent(u.pathname.replace('/wiki/', ''));
           if (fileFromHash) {

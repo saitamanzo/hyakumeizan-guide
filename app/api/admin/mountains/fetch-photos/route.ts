@@ -60,8 +60,17 @@ export async function POST(request: Request) {
     .select('id,name,photo_url')
     .order('name', { ascending: true })
     .limit(limit)
+  // 非force時: NULL かつ 記事URLを対象に含める（例: https://ja.wikipedia.org/wiki/... や https://commons.wikimedia.org/wiki/...）
   const { data: mountains, error } = await (
-    !force ? baseQuery.is('photo_url', null) : baseQuery
+    !force
+      ? baseQuery.or(
+          [
+            'photo_url.is.null',
+            'photo_url.ilike.%wikipedia.org/wiki/%',
+            'photo_url.ilike.%wikimedia.org/wiki/%',
+          ].join(',')
+        )
+      : baseQuery
   )
   if (error) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 })
@@ -69,8 +78,10 @@ export async function POST(request: Request) {
 
   const updates: Array<{ id: string, photo_url: string } | null> = await Promise.all(
     (mountains || []).map(async (m) => {
-      // 非forceでも上のクエリでNULLに絞っているが、二重防御でチェック
-      if (!force && m.photo_url) return null
+      // 既に有効なupload.wikimedia.org のURLならスキップ（非force時）
+      if (!force && typeof m.photo_url === 'string' && m.photo_url.startsWith('https://upload.wikimedia.org/')) {
+        return null
+      }
       const candidates = [m.name, `${m.name} (山)`]
       for (const t of candidates) {
         const url = await fetchWikimediaImage(t)
