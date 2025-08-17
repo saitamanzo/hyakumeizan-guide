@@ -42,20 +42,25 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
       const u = new URL(url);
       // すでに upload.wikimedia.org の直リンクならそのまま
       if (u.hostname === 'upload.wikimedia.org') return url;
-      // ページURL（#/media/... を含む）を Special:FilePath に変換
+      // Wikipedia/Commons のページURLを Special:FilePath に変換（ファイルページ or media アンカーのみ）
       if ((u.hostname.endsWith('wikipedia.org') || u.hostname.endsWith('wikimedia.org')) && u.pathname.startsWith('/wiki/')) {
-        // 例: /wiki/ファイル:xxxxx.jpg または /wiki/File:xxxxx.jpg
-        // もしくは #/media/ファイル:xxxxx.jpg のフラグメント形式
         const fileFromHash = u.hash && u.hash.startsWith('#/media/') ? decodeURIComponent(u.hash.replace('#/media/', '')) : '';
         const fileFromPath = decodeURIComponent(u.pathname.replace('/wiki/', ''));
-        const fileTitle = fileFromHash || fileFromPath; // 優先: hash
-        if (fileTitle) {
-          // en/ja/commons いずれでも FilePath 経由で取得可能
-          return `${u.protocol}//${u.hostname}/wiki/Special:FilePath/${encodeURIComponent(fileTitle.replace(/^ファイル:|^File:/i, ''))}`;
+        if (fileFromHash) {
+          const fileName = fileFromHash.replace(/^ファイル:|^File:/i, '');
+          return `${u.protocol}//${u.hostname}/wiki/Special:FilePath/${encodeURIComponent(fileName)}`;
         }
+        // パスが File:/ファイル: で始まる場合のみ変換（通常の記事タイトルは変換しない）
+        if (/^(?:ファイル:|File:)/i.test(fileFromPath)) {
+          const fileName = fileFromPath.replace(/^ファイル:|^File:/i, '');
+          return `${u.protocol}//${u.hostname}/wiki/Special:FilePath/${encodeURIComponent(fileName)}`;
+        }
+        // 通常の記事URLは画像に変換できないので null を返す
+        return null;
       }
     } catch {
-      // 何もしない（無効URLはそのまま）
+      // 何もしない（無効URLはフォールバックさせる）
+      return null;
     }
     return url;
   };

@@ -40,13 +40,18 @@ export default async function MountainPage({
         if ((u.hostname.endsWith('wikipedia.org') || u.hostname.endsWith('wikimedia.org')) && u.pathname.startsWith('/wiki/')) {
           const fileFromHash = u.hash && u.hash.startsWith('#/media/') ? decodeURIComponent(u.hash.replace('#/media/', '')) : '';
           const fileFromPath = decodeURIComponent(u.pathname.replace('/wiki/', ''));
-          const fileTitle = fileFromHash || fileFromPath;
-          if (fileTitle) {
-            return `${u.protocol}//${u.hostname}/wiki/Special:FilePath/${encodeURIComponent(fileTitle.replace(/^ファイル:|^File:/i, ''))}`;
+          if (fileFromHash) {
+            const fileName = fileFromHash.replace(/^ファイル:|^File:/i, '');
+            return `${u.protocol}//${u.hostname}/wiki/Special:FilePath/${encodeURIComponent(fileName)}`;
           }
+          if (/^(?:ファイル:|File:)/i.test(fileFromPath)) {
+            const fileName = fileFromPath.replace(/^ファイル:|^File:/i, '');
+            return `${u.protocol}//${u.hostname}/wiki/Special:FilePath/${encodeURIComponent(fileName)}`;
+          }
+          return null;
         }
       } catch {
-        // ignore
+        return null;
       }
       return url;
     };
