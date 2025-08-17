@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import Image from 'next/image';
 import { getMountainWithRoutes, getMountainReviews } from '@/app/actions/mountain';
 import LikeButton from '@/components/LikeButton';
 import { getPublicPlansByMountain } from '@/lib/plan-utils';
@@ -30,13 +31,48 @@ export default async function MountainPage({
     const latitude = mountain.latitude || 35.360833;
     const longitude = mountain.longitude || 138.727500;
 
+    // WikipediaなどのページURLを表示用の画像URLに正規化
+    const toDisplayImageUrl = (url: string | null | undefined): string | null => {
+      if (!url) return null;
+      try {
+        const u = new URL(url);
+        if (u.hostname === 'upload.wikimedia.org') return url;
+        if ((u.hostname.endsWith('wikipedia.org') || u.hostname.endsWith('wikimedia.org')) && u.pathname.startsWith('/wiki/')) {
+          const fileFromHash = u.hash && u.hash.startsWith('#/media/') ? decodeURIComponent(u.hash.replace('#/media/', '')) : '';
+          const fileFromPath = decodeURIComponent(u.pathname.replace('/wiki/', ''));
+          const fileTitle = fileFromHash || fileFromPath;
+          if (fileTitle) {
+            return `${u.protocol}//${u.hostname}/wiki/Special:FilePath/${encodeURIComponent(fileTitle.replace(/^ファイル:|^File:/i, ''))}`;
+          }
+        }
+      } catch {
+        // ignore
+      }
+      return url;
+    };
+
+    const coverUrl = toDisplayImageUrl(mountain.photo_url);
+
     return (
       <div className="py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* ...existing code... */}
           {/* ヘッダーセクション */}
           <div className="relative pb-8">
-            <div className="h-64 w-full bg-gray-200 rounded-lg"></div>
+            <div className="relative h-64 w-full overflow-hidden rounded-lg">
+              {coverUrl ? (
+                <Image
+                  src={coverUrl}
+                  alt={`${mountain.name} の写真`}
+                  fill
+                  sizes="100vw"
+                  className="object-cover"
+                  priority
+                />
+              ) : (
+                <div className="h-full w-full bg-gray-200" />
+              )}
+            </div>
             <div className="absolute bottom-0 left-0 right-0 px-4 py-6 bg-gradient-to-t from-black/60 to-transparent">
               <h1 className="text-4xl font-bold text-white">
                 {mountain.name}
