@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth } from './auth/AuthProvider';
 import { createClient } from '@/lib/supabase/client';
@@ -270,7 +271,20 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
               >
                 <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 relative">
                   {/* 山の画像 */}
-                  <div className="h-48 bg-gradient-to-br from-green-400 to-blue-500"></div>
+                  {mountain.photo_url ? (
+                    <div className="relative h-48 w-full">
+                      <Image
+                        src={mountain.photo_url}
+                        alt={`${mountain.name} の写真`}
+                        fill
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        className="object-cover"
+                        priority={false}
+                      />
+                    </div>
+                  ) : (
+                    <div className="h-48 bg-gradient-to-br from-green-400 to-blue-500" />
+                  )}
                   <div className="p-6">
                     <div className="flex items-center justify-between mb-2">
                       <h2 className="text-xl font-semibold text-gray-900 group-hover:text-indigo-600">
@@ -499,7 +513,20 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
                   </button>
 
                   {/* 山の画像 */}
-                  <div className="h-48 bg-gradient-to-br from-green-400 to-blue-500"></div>
+                  {mountain.photo_url ? (
+                    <div className="relative h-48 w-full">
+                      <Image
+                        src={mountain.photo_url}
+                        alt={`${mountain.name} の写真`}
+                        fill
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        className="object-cover"
+                        priority={false}
+                      />
+                    </div>
+                  ) : (
+                    <div className="h-48 bg-gradient-to-br from-green-400 to-blue-500" />
+                  )}
                   <div className="p-6">
                     <div className="flex items-center justify-between mb-2">
                       <h2 className="text-xl font-semibold text-gray-900 group-hover:text-indigo-600">
