@@ -2,7 +2,7 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Create mountains table
-CREATE TABLE mountains (
+CREATE TABLE IF NOT EXISTS mountains (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
     name_kana VARCHAR(255),
@@ -17,7 +17,7 @@ CREATE TABLE mountains (
 );
 
 -- Create routes table
-CREATE TABLE routes (
+CREATE TABLE IF NOT EXISTS routes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     mountain_id UUID REFERENCES mountains(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
@@ -33,7 +33,7 @@ CREATE TABLE routes (
 );
 
 -- Create users table (extends Supabase auth.users)
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY REFERENCES auth.users ON DELETE CASCADE,
     display_name VARCHAR(255),
     biography TEXT,
@@ -44,7 +44,7 @@ CREATE TABLE users (
 );
 
 -- Create climbs table
-CREATE TABLE climbs (
+CREATE TABLE IF NOT EXISTS climbs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     mountain_id UUID REFERENCES mountains(id) ON DELETE CASCADE,
@@ -60,7 +60,7 @@ CREATE TABLE climbs (
 );
 
 -- Create reviews table
-CREATE TABLE reviews (
+CREATE TABLE IF NOT EXISTS reviews (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     mountain_id UUID REFERENCES mountains(id) ON DELETE CASCADE,
@@ -72,12 +72,12 @@ CREATE TABLE reviews (
 );
 
 -- Create indexes for better query performance
-CREATE INDEX idx_mountains_name ON mountains(name);
-CREATE INDEX idx_routes_mountain_id ON routes(mountain_id);
-CREATE INDEX idx_climbs_user_id ON climbs(user_id);
-CREATE INDEX idx_climbs_mountain_id ON climbs(mountain_id);
-CREATE INDEX idx_reviews_mountain_id ON reviews(mountain_id);
-CREATE INDEX idx_reviews_route_id ON reviews(route_id);
+CREATE INDEX IF NOT EXISTS idx_mountains_name ON mountains(name);
+CREATE INDEX IF NOT EXISTS idx_routes_mountain_id ON routes(mountain_id);
+CREATE INDEX IF NOT EXISTS idx_climbs_user_id ON climbs(user_id);
+CREATE INDEX IF NOT EXISTS idx_climbs_mountain_id ON climbs(mountain_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_mountain_id ON reviews(mountain_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_route_id ON reviews(route_id);
 
 -- Add trigger for updating updated_at columns
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -88,26 +88,31 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+DROP TRIGGER IF EXISTS update_mountains_updated_at ON mountains;
 CREATE TRIGGER update_mountains_updated_at
     BEFORE UPDATE ON mountains
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_routes_updated_at ON routes;
 CREATE TRIGGER update_routes_updated_at
     BEFORE UPDATE ON routes
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
 CREATE TRIGGER update_users_updated_at
     BEFORE UPDATE ON users
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_climbs_updated_at ON climbs;
 CREATE TRIGGER update_climbs_updated_at
     BEFORE UPDATE ON climbs
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_reviews_updated_at ON reviews;
 CREATE TRIGGER update_reviews_updated_at
     BEFORE UPDATE ON reviews
     FOR EACH ROW
