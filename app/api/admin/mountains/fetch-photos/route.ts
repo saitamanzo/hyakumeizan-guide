@@ -52,21 +52,25 @@ export async function POST(request: Request) {
   const body = raw && typeof raw === 'object' ? raw as Record<string, unknown> : {}
   const limit = Math.max(1, Math.min(100, Number(body.limit ?? 100)))
   const dryRun = Boolean(body.dryRun)
+  const force = Boolean(body.force)
 
-  const { data: mountains, error } = await supabase
+  // 効率化: 通常は photo_url IS NULL の行のみを対象にする（force時は全件対象）
+  const baseQuery = supabase
     .from('mountains')
     .select('id,name,photo_url')
     .order('name', { ascending: true })
     .limit(limit)
+  const { data: mountains, error } = await (
+    !force ? baseQuery.is('photo_url', null) : baseQuery
+  )
   if (error) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 })
   }
 
   const updates: Array<{ id: string, photo_url: string } | null> = await Promise.all(
     (mountains || []).map(async (m) => {
-      // 既にphoto_urlがあるものはスキップ
-      if (m.photo_url) return null
-      // シンプルに山名で検索（必要に応じて「(山)」などの補助語を付ける）
+      // 非forceでも上のクエリでNULLに絞っているが、二重防御でチェック
+      if (!force && m.photo_url) return null
       const candidates = [m.name, `${m.name} (山)`]
       for (const t of candidates) {
         const url = await fetchWikimediaImage(t)
@@ -81,7 +85,7 @@ export async function POST(request: Request) {
   const toApply = updates.filter((u): u is { id: string, photo_url: string } => Boolean(u))
 
   if (dryRun) {
-    return NextResponse.json({ success: true, dryRun: true, updates: toApply }, { status: 200 })
+    return NextResponse.json({ success: true, dryRun: true, force, updates: toApply }, { status: 200 })
   }
 
   for (const u of toApply) {
@@ -91,5 +95,5 @@ export async function POST(request: Request) {
     }
   }
 
-  return NextResponse.json({ success: true, applied: toApply.length }, { status: 200 })
+  return NextResponse.json({ success: true, force, applied: toApply.length }, { status: 200 })
 }

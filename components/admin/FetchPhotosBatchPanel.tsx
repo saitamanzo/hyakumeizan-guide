@@ -4,11 +4,12 @@ import React, { useState } from "react";
 export default function FetchPhotosBatchPanel() {
   const [limit, setLimit] = useState<number>(50);
   const [dryRun, setDryRun] = useState<boolean>(true);
+  const [force, setForce] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [result, setResult] = useState<unknown>(null);
   const [error, setError] = useState<string | null>(null);
 
-  type ApiOk = { success: true; dryRun?: boolean; updates?: Array<{ id: string; photo_url: string }>; applied?: number };
+  type ApiOk = { success: true; dryRun?: boolean; force?: boolean; updates?: Array<{ id: string; photo_url: string }>; applied?: number };
   type ApiErr = { success: false; error: string };
 
   const run = async () => {
@@ -19,7 +20,7 @@ export default function FetchPhotosBatchPanel() {
       const res = await fetch("/api/admin/mountains/fetch-photos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ limit, dryRun }),
+        body: JSON.stringify({ limit, dryRun, force }),
       });
       const data: ApiOk | ApiErr = await res.json();
       if (!res.ok || ("success" in data && data.success === false)) {
@@ -54,6 +55,10 @@ export default function FetchPhotosBatchPanel() {
         <label className="flex items-center gap-2">
           <input type="checkbox" checked={dryRun} onChange={(e) => setDryRun(e.target.checked)} />
           <span>ドライラン（適用せずプレビュー）</span>
+        </label>
+        <label className="flex items-center gap-2">
+          <input type="checkbox" checked={force} onChange={(e) => setForce(e.target.checked)} />
+          <span>強制上書き（既存の写真があっても更新）</span>
         </label>
         <button onClick={run} disabled={loading} className="bg-indigo-600 text-white px-3 py-1 rounded">
           {loading ? "実行中..." : "実行"}
