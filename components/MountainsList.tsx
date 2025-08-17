@@ -15,7 +15,7 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
   const [mountains] = useState<Mountain[]>(initialMountains);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<'name' | 'elevation' | 'difficulty' | 'category'>('name');
+  const [sortBy, setSortBy] = useState<'name' | 'elevation' | 'difficulty' | 'category'>('category');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [loadingFavorites, setLoadingFavorites] = useState(true);
@@ -27,7 +27,9 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
     difficulty: '',
     prefecture: '',
     elevation: { min: null, max: null },
-    bestSeason: ''
+    bestSeason: '',
+    category: '',
+    categoryOrder: { min: null, max: null },
   });
   const [filteredMountains, setFilteredMountains] = useState<Mountain[]>(initialMountains);
   const [isLoading, setIsLoading] = useState(false);
@@ -104,12 +106,17 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
     const filterMountains = () => {
       let filtered = mountains;
 
-      // テキスト検索
+      // テキスト検索（数値が入ればカテゴリ/順位も対象）
       if (debouncedSearchQuery.trim()) {
         const query = debouncedSearchQuery.toLowerCase();
+        const numericQuery = Number.isFinite(Number(query)) ? Number(query) : null;
         filtered = filtered.filter(mountain => 
           mountain.name.toLowerCase().includes(query) ||
-          mountain.prefecture.toLowerCase().includes(query)
+          mountain.prefecture.toLowerCase().includes(query) ||
+          (numericQuery !== null && (
+            (mountain.category ?? -1) === numericQuery ||
+            (mountain.category_order ?? -1) === numericQuery
+          ))
         );
       }
 
@@ -127,11 +134,26 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
         );
       }
 
+      // カテゴリフィルター
+      if (filters.category !== '') {
+        filtered = filtered.filter(mountain => (mountain.category ?? -1) === filters.category);
+      }
+
       // 標高フィルター
       if (filters.elevation.min !== null || filters.elevation.max !== null) {
         filtered = filtered.filter(mountain => {
           const minOk = filters.elevation.min === null || mountain.elevation >= filters.elevation.min;
           const maxOk = filters.elevation.max === null || mountain.elevation <= filters.elevation.max;
+          return minOk && maxOk;
+        });
+      }
+
+      // カテゴリ内順位フィルター
+      if (filters.categoryOrder.min !== null || filters.categoryOrder.max !== null) {
+        filtered = filtered.filter(mountain => {
+          const order = mountain.category_order ?? null;
+          const minOk = filters.categoryOrder.min === null || (order !== null && order >= filters.categoryOrder.min);
+          const maxOk = filters.categoryOrder.max === null || (order !== null && order <= filters.categoryOrder.max);
           return minOk && maxOk;
         });
       }

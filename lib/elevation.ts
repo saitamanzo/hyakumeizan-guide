@@ -45,27 +45,30 @@ async function getElevationFromGoogle(lat: number, lng: number): Promise<number 
     console.log('📡 API Route Response headers:', Object.fromEntries(response.headers.entries()));
 
     if (!response.ok) {
-      let errorData: unknown = null;
-      try {
-        errorData = await response.json();
-      } catch {
-        // ignore
+      const contentType = response.headers.get('content-type') || '';
+      const bodyText = await response.text().catch(() => '');
+      let parsed: unknown = null;
+      if (contentType.includes('application/json') && bodyText) {
+        try {
+          parsed = JSON.parse(bodyText);
+        } catch {
+          parsed = null;
+        }
       }
-      // JSONが空や不十分な場合はテキストも拾う
-      if (!errorData || (typeof errorData === 'object' && Object.keys(errorData as Record<string, unknown>).length === 0)) {
-        const text = await response.text().catch(() => '');
-        errorData = text ? { raw: text } : { error: 'Failed to parse error response' };
-      }
+      const errorData = parsed && typeof parsed === 'object' && Object.keys(parsed as Record<string, unknown>).length > 0
+        ? parsed
+        : (bodyText
+            ? { raw: bodyText.slice(0, 2000) }
+            : { error: 'Empty error response body' });
+
       console.error('❌ API Route Error response:', errorData);
-      
-      // 詳細なエラー情報をログに出力
       console.error('❌ Detailed error info:', {
         status: response.status,
         statusText: response.statusText,
         url: response.url,
-        errorData
+        contentType,
+        hasBody: Boolean(bodyText)
       });
-      
       return null;
     }
 

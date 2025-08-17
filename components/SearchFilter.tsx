@@ -15,6 +15,12 @@ export interface SearchFilters {
     max: number | null;
   };
   bestSeason: string;
+  // 追加: カテゴリ(0-9) と カテゴリ内順(0-99)
+  category: number | '';
+  categoryOrder: {
+    min: number | null;
+    max: number | null;
+  };
 }
 
 const DIFFICULTY_LEVELS = ['', '初級', '中級', '上級'];
@@ -33,8 +39,10 @@ export default function SearchFilter({ onSearch, onFilterChange }: SearchFilterP
   const [filters, setFilters] = useState<SearchFilters>({
     difficulty: '',
     prefecture: '',
-    elevation: { min: null, max: null },
-    bestSeason: ''
+  elevation: { min: null, max: null },
+  bestSeason: '',
+  category: '',
+  categoryOrder: { min: null, max: null },
   });
   const [showFilters, setShowFilters] = useState(false);
 
@@ -53,8 +61,10 @@ export default function SearchFilter({ onSearch, onFilterChange }: SearchFilterP
     const clearedFilters: SearchFilters = {
       difficulty: '',
       prefecture: '',
-      elevation: { min: null, max: null },
-      bestSeason: ''
+  elevation: { min: null, max: null },
+  bestSeason: '',
+  category: '',
+  categoryOrder: { min: null, max: null },
     };
     setFilters(clearedFilters);
     onFilterChange(clearedFilters);
@@ -134,6 +144,23 @@ export default function SearchFilter({ onSearch, onFilterChange }: SearchFilterP
               </select>
             </div>
 
+            {/* カテゴリフィルター */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                カテゴリ (0-9)
+              </label>
+              <select
+                value={filters.category}
+                onChange={(e) => updateFilters({ category: e.target.value === '' ? '' : Number(e.target.value) })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+              >
+                <option value="">すべて</option>
+                {Array.from({ length: 10 }, (_, i) => i).map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+
             {/* ベストシーズンフィルター */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -182,6 +209,47 @@ export default function SearchFilter({ onSearch, onFilterChange }: SearchFilterP
                       elevation: { 
                         ...filters.elevation, 
                         max: e.target.value ? Number(e.target.value) : null 
+                      }
+                    })
+                  }
+                  className="w-1/2 px-2 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+            </div>
+
+            {/* カテゴリ内順位フィルター */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                カテゴリ内順 (0-99)
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  placeholder="最低"
+                  min={0}
+                  max={99}
+                  value={filters.categoryOrder.min ?? ''}
+                  onChange={(e) =>
+                    updateFilters({
+                      categoryOrder: {
+                        ...filters.categoryOrder,
+                        min: e.target.value === '' ? null : Number(e.target.value)
+                      }
+                    })
+                  }
+                  className="w-1/2 px-2 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                />
+                <input
+                  type="number"
+                  placeholder="最高"
+                  min={0}
+                  max={99}
+                  value={filters.categoryOrder.max ?? ''}
+                  onChange={(e) =>
+                    updateFilters({
+                      categoryOrder: {
+                        ...filters.categoryOrder,
+                        max: e.target.value === '' ? null : Number(e.target.value)
                       }
                     })
                   }

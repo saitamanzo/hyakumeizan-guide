@@ -47,11 +47,9 @@ export default async function MountainPage({
               <p className="mt-2 text-white/90">
                 {mountain.prefecture}
               </p>
-              {(mountain.category !== null && mountain.category !== undefined) && (
-                <p className="mt-1 text-white/80 text-sm">
-                  カテゴリ: {mountain.category} / 順位: {mountain.category_order ?? '-'}
-                </p>
-              )}
+              <p className="mt-1 text-white/80 text-sm">
+                カテゴリ: {mountain.category ?? '-'} / 順位: {mountain.category_order ?? '-'}
+              </p>
             </div>
           </div>
 
@@ -93,12 +91,10 @@ export default async function MountainPage({
                     <dt className="text-sm font-medium text-gray-500">位置</dt>
                     <dd className="mt-1 text-base text-gray-900">{mountain.location}</dd>
                   </div>
-                  {(mountain.category !== null && mountain.category !== undefined) && (
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">カテゴリ情報</dt>
-                      <dd className="mt-1 text-base text-gray-900">カテゴリ: {mountain.category} / 順位: {mountain.category_order ?? '-'}</dd>
-                    </div>
-                  )}
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">カテゴリ情報</dt>
+                    <dd className="mt-1 text-base text-gray-900">カテゴリ: {mountain.category ?? '-'} / 順位: {mountain.category_order ?? '-'}</dd>
+                  </div>
                   <div>
                     <dt className="text-sm font-medium text-gray-500">ベストシーズン</dt>
                     <dd className="mt-1 text-base text-gray-900">{mountain.best_season || '情報なし'}</dd>

@@ -49,7 +49,7 @@ export async function GET(request: Request) {
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
       return NextResponse.json(
         { status: 'error', message: 'Invalid or missing lat/lng' },
-        { status: 400 }
+        { status: 400, headers: { 'Cache-Control': 'no-store' } }
       )
     }
 
@@ -68,8 +68,31 @@ export async function GET(request: Request) {
       cache: 'no-store',
       headers: { 'Accept': 'application/json' },
     })
-
-    const data = await res.json().catch(() => ({}))
+    // Read as text first to preserve raw content on errors
+  const raw = await res.text().catch(() => '')
+    type GoogleElevationOK = { status: 'OK'; results: Array<{ elevation: number }> }
+  type GoogleElevationResponse = GoogleElevationOK | { status?: string; results?: unknown } | { raw: string } | object
+    let data: GoogleElevationResponse = {}
+    const isOkShape = (d: unknown): d is GoogleElevationOK => {
+      if (!d || typeof d !== 'object') return false
+      const obj = d as Record<string, unknown>
+      if (obj.status !== 'OK') return false
+      const results = obj.results
+      if (!Array.isArray(results)) return false
+      // elevation should be number when present
+      if (results.length === 0) return true
+      const first = results[0]
+      if (!first || typeof first !== 'object') return false
+      const elev = (first as Record<string, unknown>).elevation
+      return typeof elev === 'number'
+    }
+    if (raw) {
+      try {
+        data = JSON.parse(raw)
+      } catch {
+        data = { raw }
+      }
+    }
 
     if (!res.ok) {
       // send detailed error to monitoring only in production
@@ -83,20 +106,20 @@ export async function GET(request: Request) {
       const body = process.env.NODE_ENV === 'production'
         ? { status: 'error', message: 'Upstream service error' }
         : { status: 'error', message: 'Google Elevation API request failed', httpStatus: res.status, google: data }
-      return NextResponse.json(body, { status: res.status })
+      return NextResponse.json(body, { status: res.status, headers: { 'Cache-Control': 'no-store' } })
     }
 
-    if (data.status !== 'OK' || !Array.isArray(data.results) || data.results.length === 0) {
+  if (!isOkShape(data) || data.results.length === 0) {
       if (process.env.NODE_ENV === 'production') {
         await reportError(new Error('Elevation API returned no data'), { google: data })
       }
       const body = process.env.NODE_ENV === 'production'
         ? { status: 'error', message: 'No elevation data returned' }
         : { status: 'error', message: 'No elevation data returned', google: data }
-      return NextResponse.json(body, { status: 502 })
+      return NextResponse.json(body, { status: 502, headers: { 'Cache-Control': 'no-store' } })
     }
 
-    const elevation = data.results[0]?.elevation
+  const elevation = data.results[0]?.elevation
     if (typeof elevation !== 'number') {
       if (process.env.NODE_ENV === 'production') {
         await reportError(new Error('Invalid elevation value'), { google: data })
@@ -104,7 +127,7 @@ export async function GET(request: Request) {
       const body = process.env.NODE_ENV === 'production'
         ? { status: 'error', message: 'Invalid elevation value in response' }
         : { status: 'error', message: 'Invalid elevation value in response', google: data }
-      return NextResponse.json(body, { status: 502 })
+      return NextResponse.json(body, { status: 502, headers: { 'Cache-Control': 'no-store' } })
     }
 
     return NextResponse.json(

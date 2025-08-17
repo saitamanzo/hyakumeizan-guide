@@ -53,6 +53,20 @@ export default function SignInForm() {
     setLoading(true);
 
     try {
+      // 事前バリデーション
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        setError('有効なメールアドレスを入力してください（例: user@example.com）');
+        return;
+      }
+
+      if (!resetMode) {
+        if (!password || password.length < 8) {
+          setError('パスワードは8文字以上で入力してください');
+          return;
+        }
+      }
+
       if (resetMode) {
         // パスワードリセット処理
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -65,11 +79,13 @@ export default function SignInForm() {
 
         setResetMessage('パスワードリセットのメールを送信しました。メールをご確認ください。');
         setResetMode(false);
-      } else {
-        // 通常のログイン処理
+  } else {
+        // 通常のログイン処理（入力正規化）
+        const normalizedEmail = email.trim().toLowerCase();
+        const normalizedPassword = password.trim();
         const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
+          email: normalizedEmail,
+          password: normalizedPassword,
         });
 
         if (error) {
@@ -94,6 +110,10 @@ export default function SignInForm() {
           errorMessage = 'メールアドレスまたはパスワードが正しくありません。新規登録の場合は、確認メールを受信してアカウントを有効化してください。';
         } else if (error.message.includes('Email not confirmed')) {
           errorMessage = '確認メールが送信されています。メール内のリンクをクリックしてアカウントを有効化してください。';
+        } else if (error.message.toLowerCase().includes('user not found')) {
+          errorMessage = 'アカウントが見つかりません。メールアドレスをご確認いただくか、新規登録をご利用ください。';
+        } else if (error.message.toLowerCase().includes('password')) {
+          errorMessage = 'パスワードが正しくありません。お忘れの場合は「パスワードを忘れた場合」から再設定を行ってください。';
         } else if (error.message.includes('Too many requests')) {
           errorMessage = '試行回数が多すぎます。しばらく待ってから再度お試しください。';
         } else {
