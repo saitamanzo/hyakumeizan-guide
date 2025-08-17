@@ -72,20 +72,23 @@ export default async function MountainPage({
               ) : (
                 <div className="h-full w-full bg-gray-200" />
               )}
-            </div>
-            <div className="absolute bottom-0 left-0 right-0 px-4 py-6 bg-gradient-to-t from-black/60 to-transparent">
-              <h1 className="text-4xl font-bold text-white">
-                {mountain.name}
-                <span className="text-2xl ml-2 font-normal">
-                  ({mountain.elevation}m)
-                </span>
-              </h1>
-              <p className="mt-2 text-white/90">
-                {mountain.prefecture}
-              </p>
-              <p className="mt-1 text-white/80 text-sm">
-                カテゴリ: {mountain.category ?? '-'} / 順位: {mountain.category_order ?? '-'}
-              </p>
+              {/* グラデーションオーバーレイ */}
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+              {/* タイトルエリア */}
+              <div className="absolute bottom-0 left-0 right-0 px-4 py-4 sm:px-6 sm:py-6">
+                <h1 className="text-3xl sm:text-4xl font-bold text-white drop-shadow">
+                  {mountain.name}
+                  <span className="text-xl sm:text-2xl ml-2 font-normal">
+                    ({mountain.elevation}m)
+                  </span>
+                </h1>
+                <p className="mt-1 sm:mt-2 text-white/90 drop-shadow">
+                  {mountain.prefecture}
+                </p>
+                <p className="mt-1 text-white/80 text-xs sm:text-sm drop-shadow">
+                  カテゴリ: {mountain.category ?? '-'} / 順位: {mountain.category_order ?? '-'}
+                </p>
+              </div>
             </div>
           </div>
 
