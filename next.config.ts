@@ -21,6 +21,18 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/wikipedia/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'ja.wikipedia.org',
+        port: '',
+        pathname: '/wiki/Special:FilePath/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'commons.wikimedia.org',
+        port: '',
+        pathname: '/wiki/Special:FilePath/**',
+      },
     ],
     dangerouslyAllowSVG: true,
     contentDispositionType: 'attachment',

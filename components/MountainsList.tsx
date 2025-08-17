@@ -35,6 +35,31 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
   const [filteredMountains, setFilteredMountains] = useState<Mountain[]>(initialMountains);
   const [isLoading, setIsLoading] = useState(false);
 
+  // WikipediaのページURLを画像URLに正規化
+  const toDisplayImageUrl = (url: string | null | undefined): string | null => {
+    if (!url) return null;
+    try {
+      const u = new URL(url);
+      // すでに upload.wikimedia.org の直リンクならそのまま
+      if (u.hostname === 'upload.wikimedia.org') return url;
+      // ページURL（#/media/... を含む）を Special:FilePath に変換
+      if ((u.hostname.endsWith('wikipedia.org') || u.hostname.endsWith('wikimedia.org')) && u.pathname.startsWith('/wiki/')) {
+        // 例: /wiki/ファイル:xxxxx.jpg または /wiki/File:xxxxx.jpg
+        // もしくは #/media/ファイル:xxxxx.jpg のフラグメント形式
+        const fileFromHash = u.hash && u.hash.startsWith('#/media/') ? decodeURIComponent(u.hash.replace('#/media/', '')) : '';
+        const fileFromPath = decodeURIComponent(u.pathname.replace('/wiki/', ''));
+        const fileTitle = fileFromHash || fileFromPath; // 優先: hash
+        if (fileTitle) {
+          // en/ja/commons いずれでも FilePath 経由で取得可能
+          return `${u.protocol}//${u.hostname}/wiki/Special:FilePath/${encodeURIComponent(fileTitle.replace(/^ファイル:|^File:/i, ''))}`;
+        }
+      }
+    } catch {
+      // 何もしない（無効URLはそのまま）
+    }
+    return url;
+  };
+
   // サーバー同期型お気に入り機能
   const toggleFavorite = async (mountainId: string) => {
     if (!user) {
@@ -271,10 +296,10 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
               >
                 <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 relative">
                   {/* 山の画像 */}
-                  {mountain.photo_url ? (
+      {toDisplayImageUrl(mountain.photo_url) ? (
                     <div className="relative h-48 w-full">
                       <Image
-                        src={mountain.photo_url}
+        src={toDisplayImageUrl(mountain.photo_url) as string}
                         alt={`${mountain.name} の写真`}
                         fill
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
@@ -513,10 +538,10 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
                   </button>
 
                   {/* 山の画像 */}
-                  {mountain.photo_url ? (
+      {toDisplayImageUrl(mountain.photo_url) ? (
                     <div className="relative h-48 w-full">
                       <Image
-                        src={mountain.photo_url}
+        src={toDisplayImageUrl(mountain.photo_url) as string}
                         alt={`${mountain.name} の写真`}
                         fill
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
