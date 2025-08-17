@@ -128,6 +128,8 @@ export default function MountainSelectionTable({ mountains }: Props) {
         <tbody>
           {mountains.map((m) => {
             const st = statusMap[m.id]?.state || "idle";
+            const rowState = statusMap[m.id];
+            const hasPhoto = Boolean(m.photo_url) || (rowState?.state === "success" && Boolean(rowState.photo_url));
             return (
               <tr key={m.id} className="align-top">
                 <td className="border px-2 py-1 text-center">
@@ -140,11 +142,7 @@ export default function MountainSelectionTable({ mountains }: Props) {
                 <td className="border px-2 py-1 text-xs text-gray-600">{m.id}</td>
                 <td className="border px-2 py-1">{m.name}</td>
                 <td className="border px-2 py-1 text-sm">
-                  {m.photo_url ? (
-                    <span className="text-green-700">あり</span>
-                  ) : (
-                    <span className="text-gray-500">なし</span>
-                  )}
+                  {hasPhoto ? <span className="text-green-700">あり</span> : <span className="text-gray-500">なし</span>}
                 </td>
                 <td className="border px-2 py-1 text-sm">
                   {st === "idle" && <span className="text-gray-500">-</span>}

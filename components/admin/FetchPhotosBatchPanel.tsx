@@ -39,7 +39,8 @@ export default function FetchPhotosBatchPanel() {
 
   return (
     <div className="mb-6 p-4 border rounded bg-white">
-      <h2 className="text-lg font-semibold mb-2">Wikimediaから写真を一括取得</h2>
+  <h2 className="text-lg font-semibold mb-2">Wikimediaから写真を一括取得</h2>
+  <p className="text-xs text-gray-600 mb-2">初回はドライランでプレビューされます。保存するにはドライランをオフにしてください。</p>
       <div className="flex items-center gap-4 mb-2">
         <label className="flex items-center gap-2">
           <span>件数上限</span>
