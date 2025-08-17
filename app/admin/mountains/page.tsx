@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getMountains } from "@/app/actions/mountains";
 import DeleteMountainButton from "@/components/admin/DeleteMountainButton";
 import FetchPhotosBatchPanel from "@/components/admin/FetchPhotosBatchPanel";
+import MountainSelectionTable from "@/components/admin/MountainSelectionTable";
 
 export default async function AdminMountainsPage() {
   // 管理者用：山一覧取得
@@ -12,6 +13,9 @@ export default async function AdminMountainsPage() {
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">山一覧（管理者）</h1>
       <FetchPhotosBatchPanel />
+      <div className="mb-4">
+        <MountainSelectionTable mountains={mountains} />
+      </div>
       <Link href="/admin/mountains/new" className="bg-blue-500 text-white px-4 py-2 rounded mb-4 inline-block">新規作成</Link>
       <table className="w-full border">
         <thead>
