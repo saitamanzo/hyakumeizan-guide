@@ -407,14 +407,6 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
                             priority={false}
                             unoptimized={process.env.NEXT_PUBLIC_IMAGE_UNOPTIMIZED === 'true'}
                           />
-                          <button
-                            type="button"
-                            aria-label="画像のクレジット/ライセンスを開く"
-                            title="画像のクレジット/ライセンス"
-                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(imgObj.filePageUrl, '_blank', 'noopener,noreferrer'); }}
-                            className="absolute inset-0 cursor-pointer bg-transparent"
-                            style={{ background: 'transparent' }}
-                          />
                         </div>
                       ) : (
                         <div className="h-48 bg-gradient-to-br from-green-400 to-blue-500" />
@@ -666,14 +658,6 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
                             priority={false}
                             unoptimized={process.env.NEXT_PUBLIC_IMAGE_UNOPTIMIZED === 'true'}
                           />
-                          <button
-                            type="button"
-                            aria-label="画像のクレジット/ライセンスを開く"
-                            title="画像のクレジット/ライセンス"
-                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(imgObj.filePageUrl, '_blank', 'noopener,noreferrer'); }}
-                            className="absolute inset-0 cursor-pointer bg-transparent"
-                            style={{ background: 'transparent' }}
-                          />
                         </div>
                       ) : (
                         <div className="h-48 bg-gradient-to-br from-green-400 to-blue-500" />
@@ -695,11 +679,7 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
                               {mountain.elevation}m
                             </span>
                           </div>
-                          {mountain.category !== null && mountain.category !== undefined && (
-                            <p className="text-xs text-gray-500 mb-1">
-                              カテゴリ: {mountain.category} / 順位: {mountain.category_order ?? '-'}
-                            </p>
-                          )}
+                          {/* カテゴリ番号・順位の表示を削除 */}
                           <p className="text-sm text-gray-600 mb-2">
                             {mountain.prefecture}
                           </p>
