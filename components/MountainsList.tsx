@@ -1,6 +1,25 @@
-'use client';
+  "use client";
+  // カテゴリ番号→地域名マップ
+
+
 
 import React, { useState, useEffect } from 'react';
+// 画像クレジット型
+type ImageCredit = {
+  author: string;
+  license: string;
+  licenseUrl: string;
+  filePageUrl: string;
+};
+
+// ダミー関数: buildMediaUrlOnJapan100, toBase64Url
+function buildMediaUrlOnJapan100(fileName: string): string {
+  return `https://commons.wikimedia.org/wiki/File:${encodeURIComponent(fileName)}`;
+}
+function toBase64Url(url: string): string {
+  if (typeof window === 'undefined') return '';
+  return btoa(url);
+}
 import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth } from './auth/AuthProvider';
@@ -13,6 +32,12 @@ interface MountainsListProps {
 }
 
 export default function MountainsList({ initialMountains }: MountainsListProps) {
+  // 画像クレジット管理
+  const [creditMap, setCreditMap] = useState<Record<string, ImageCredit | null>>({});
+  // 検索・フィルタ後の山リスト
+  const [filteredMountains, setFilteredMountains] = useState<Mountain[]>(initialMountains);
+  // ローディング状態
+  const [isLoading, setIsLoading] = useState(false);
   const [mountains] = useState<Mountain[]>(initialMountains);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
@@ -32,34 +57,9 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
     category: '',
     categoryOrder: { min: null, max: null },
   });
-  const [filteredMountains, setFilteredMountains] = useState<Mountain[]>(initialMountains);
-  const [isLoading, setIsLoading] = useState(false);
-  type ImageCredit = { author: string; license: string; licenseUrl: string; filePageUrl: string };
-  const [creditMap, setCreditMap] = useState<Record<string, ImageCredit | null>>({});
 
-  // Base64URL エンコード（ブラウザ/SSR両対応）
-  const toBase64Url = (str: string): string => {
-    try {
-      if (typeof window === 'undefined') {
-  // SSR（Node.js）: global Buffer を利用
-        const buf = Buffer.from(str, 'utf-8')
-        return buf.toString('base64').replace(/=+$/,'').replace(/\+/g,'-').replace(/\//g,'_')
-      }
-      // ブラウザ側：Unicode対応の btoa ラップ
-      const b64 = btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (_, p1) => String.fromCharCode(parseInt(p1, 16))))
-      return b64.replace(/=+$/,'').replace(/\+/g,'-').replace(/\//g,'_')
-    } catch {
-      return ''
-    }
-  }
-
-  type DisplayImage = { src: string; filePageUrl: string } | null
-  const buildMediaUrlOnJapan100 = (fileName: string) => {
-    return `https://ja.wikipedia.org/wiki/%E6%97%A5%E6%9C%AC%E7%99%BE%E5%90%8D%E5%B1%B1#/media/File:${encodeURIComponent(fileName)}`
-  }
-
-  // WikipediaのページURLを画像URLに正規化し、必ずローカルプロキシにラップ
-  const toDisplayImageUrl = (url: string | null | undefined, targetWidth = 640): DisplayImage => {
+  // --- 画像URL正規化関数の修正版 ---
+  const toDisplayImageUrl = (url: string | null | undefined, targetWidth = 640): { src: string; filePageUrl: string } | null => {
     if (!url) return null;
     let external: string | null = null;
     let filePageUrl: string | null = null;
@@ -67,33 +67,30 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
       const u = new URL(url);
       // upload.wikimedia.org の直リンクはファイル名を取り出して Special:FilePath に正規化
       if (u.hostname === 'upload.wikimedia.org') {
-        const parts = u.pathname.split('/')
-        const isThumb = parts.includes('thumb')
-        const rawName = isThumb ? parts[parts.length - 2] : parts[parts.length - 1]
-        const fileName = decodeURIComponent(rawName)
+        const parts = u.pathname.split('/');
+        const isThumb = parts.includes('thumb');
+        const rawName = isThumb ? parts[parts.length - 2] : parts[parts.length - 1];
+        const fileName = decodeURIComponent(rawName);
         if (fileName) {
-          external = `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(fileName)}?width=${targetWidth}`
-          // クリック先は原本のアップロードURL
-          filePageUrl = u.toString()
+          external = `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(fileName)}?width=${targetWidth}`;
+          filePageUrl = u.toString();
         }
       }
       // Wikipedia/Commons のページURLを Special:FilePath に変換（ファイルページ or media アンカーのみ）
       if (!external && (u.hostname.endsWith('wikipedia.org') || u.hostname.endsWith('wikimedia.org'))) {
         if (/\/wiki\/Special:FilePath\//.test(u.pathname)) {
-          // 既に Special:FilePath の場合は width 付与（なければ）
           try {
-            const cu = new URL(url)
+            const cu = new URL(url);
             if (!cu.searchParams.has('width')) {
-              cu.searchParams.set('width', String(targetWidth))
-              external = cu.toString()
+              cu.searchParams.set('width', String(targetWidth));
+              external = cu.toString();
             } else {
-              external = url
+              external = url;
             }
-            // ファイル名推定
-            const name = cu.pathname.replace('/wiki/Special:FilePath/', '')
-            if (name) filePageUrl = buildMediaUrlOnJapan100(decodeURIComponent(name))
+            const name = cu.pathname.replace('/wiki/Special:FilePath/', '');
+            if (name) filePageUrl = buildMediaUrlOnJapan100(decodeURIComponent(name));
           } catch {
-            external = url
+            external = url;
           }
         } else if (u.pathname.startsWith('/wiki/')) {
           const fileFromHash = u.hash && u.hash.startsWith('#/media/') ? decodeURIComponent(u.hash.replace('#/media/', '')) : '';
@@ -101,11 +98,11 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
           if (fileFromHash) {
             const fileName = fileFromHash.replace(/^ファイル:|^File:/i, '');
             external = `${u.protocol}//${u.hostname}/wiki/Special:FilePath/${encodeURIComponent(fileName)}?width=${targetWidth}`;
-            filePageUrl = buildMediaUrlOnJapan100(fileName)
+            filePageUrl = buildMediaUrlOnJapan100(fileName);
           } else if (/^(?:ファイル:|File:)/i.test(fileFromPath)) {
             const fileName = fileFromPath.replace(/^ファイル:|^File:/i, '');
             external = `${u.protocol}//${u.hostname}/wiki/Special:FilePath/${encodeURIComponent(fileName)}?width=${targetWidth}`;
-            filePageUrl = buildMediaUrlOnJapan100(fileName)
+            filePageUrl = buildMediaUrlOnJapan100(fileName);
           }
         }
       }
@@ -113,9 +110,9 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
       external = null;
     }
     if (!external) return null;
-    const b64url = toBase64Url(external)
-    if (!b64url) return null
-    return { src: `/api/image?u=${b64url}`, filePageUrl: filePageUrl || external }
+    const b64url = toBase64Url(external);
+    if (!b64url) return null;
+    return { src: `/api/image?u=${b64url}`, filePageUrl: filePageUrl || external };
   };
 
   // サーバー同期型お気に入り機能
@@ -372,7 +369,6 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
           </div>
           <SearchFilter onSearch={setSearchQuery} onFilterChange={setFilters} />
           {/* 検索・ソート・ページネーション・山一覧部分のみ表示（お気に入りボタン非表示） */}
-          {/* ...既存の山一覧表示部分を流用... */}
           <div className="mb-4 flex justify-between items-center">
             <p className="text-sm text-gray-600">
               {filteredMountains.length} 件の山が見つかりました
@@ -389,126 +385,79 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
               </div>
             )}
           </div>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {currentMountains.map((mountain) => (
-              <Link
-                key={mountain.id}
-                href={`/mountains/${mountain.id}`}
-                className="block group"
-              >
-                <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 relative">
-                  {/* 山の画像 */}
-      {toDisplayImageUrl(mountain.photo_url, 640) ? (
-                    <div className="relative h-48 w-full">
-                      {(() => {
-                        const img = toDisplayImageUrl(mountain.photo_url, 640)!
-                        return (
-                          <>
-                            <Image
-                              src={img.src}
-                              alt={`${mountain.name} の写真`}
-                              fill
-                              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                              className="object-cover"
-                              priority={false}
-                              unoptimized={process.env.NEXT_PUBLIC_IMAGE_UNOPTIMIZED === 'true'}
-                            />
-                            <button
-                              type="button"
-                              aria-label="画像のクレジット/ライセンスを開く"
-                              title="画像のクレジット/ライセンス"
-                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(img.filePageUrl, '_blank', 'noopener,noreferrer'); }}
-                              className="absolute inset-0 cursor-pointer bg-transparent"
-                              style={{ background: 'transparent' }}
-                            />
-                          </>
-                        )
-                      })()}
-                    </div>
-                  ) : (
-                    <div className="h-48 bg-gradient-to-br from-green-400 to-blue-500" />
-                  )}
-                  {/* クレジット表示 */}
-                  {(() => {
-                    const credit = creditMap[mountain.id]
-                    if (!credit) return null
-                    const { author, license, licenseUrl, filePageUrl } = credit
-                    if (!author && !license) return (
-                      <div className="px-3 py-1 text-[11px] text-gray-500 bg-white/70">
-                        画像提供: 
-                        <button
-                          type="button"
-                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(filePageUrl, '_blank', 'noopener,noreferrer'); }}
-                          className="underline"
-                          aria-label="Wikimedia Commons のファイルページを開く"
-                          title="Wikimedia Commons のファイルページを開く"
-                        >
-                          Wikimedia Commons
-                        </button>
-                      </div>
-                    )
-                    return (
-                      <div className="px-3 py-1 text-[11px] text-gray-600 bg-white/70">
-                        画像: 
-                        <button
-                          type="button"
-                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(filePageUrl, '_blank', 'noopener,noreferrer'); }}
-                          className="underline"
-                          aria-label="画像のクレジット/ライセンス (ファイルページ) を開く"
-                          title="画像のクレジット/ライセンス (ファイルページ) を開く"
-                        >
-                          {author || '提供者不明'}
-                        </button>
-                        {license && (
-                          <>
-                            {' '} / ライセンス: 
-                            <button
-                              type="button"
-                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(licenseUrl, '_blank', 'noopener,noreferrer'); }}
-                              className="underline"
-                              aria-label="ライセンスの詳細を開く"
-                              title="ライセンスの詳細を開く"
-                            >
-                              {license}
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    )
-                  })()}
-                  <div className="p-6">
-                    <div className="flex items-center justify-between mb-2">
-                      <h2 className="text-xl font-semibold text-gray-900 group-hover:text-indigo-600">
-                        {mountain.name}
-                      </h2>
-                      <span className="text-sm text-gray-600">
-                        {mountain.elevation}m
-                      </span>
-                    </div>
-                    {mountain.category !== null && mountain.category !== undefined && (
-                      <p className="text-xs text-gray-500 mb-1">
-                        カテゴリ: {mountain.category} / 順位: {mountain.category_order ?? '-'}
-                      </p>
-                    )}
-                    <p className="text-sm text-gray-600 mb-2">
-                      {mountain.prefecture || '-'}
-                    </p>
-                    <div className="flex items-center space-x-2">
-                      {mountain.difficulty_level && (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          {mountain.difficulty_level}
-                        </span>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 overflow-visible">
+            {currentMountains.map((mountain) => {
+              const imgObj = toDisplayImageUrl(mountain.photo_url, 640);
+              return (
+                <div key={mountain.id}>
+                  <Link
+                    href={`/mountains/${mountain.id}`}
+                    className="block group"
+                  >
+                    <div className="bg-white rounded-lg shadow-md overflow-visible hover:shadow-lg transition-shadow duration-300 relative">
+                      {/* 山の画像 */}
+                      {imgObj ? (
+                        <div className="relative h-64 w-full overflow-visible">
+                          <Image
+                            src={imgObj.src}
+                            alt={`${mountain.name} の写真`}
+                            fill
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                            className="object-cover"
+                            priority={false}
+                            unoptimized={process.env.NEXT_PUBLIC_IMAGE_UNOPTIMIZED === 'true'}
+                          />
+                          <button
+                            type="button"
+                            aria-label="画像のクレジット/ライセンスを開く"
+                            title="画像のクレジット/ライセンス"
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(imgObj.filePageUrl, '_blank', 'noopener,noreferrer'); }}
+                            className="absolute inset-0 cursor-pointer bg-transparent"
+                            style={{ background: 'transparent' }}
+                          />
+                        </div>
+                      ) : (
+                        <div className="h-48 bg-gradient-to-br from-green-400 to-blue-500" />
                       )}
-                      {mountain.best_season && (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          {mountain.best_season}
-                        </span>
-                      )}
+                      {/* 画像下に常時表示のCreditエリア＋山情報を1つの親divでラップ */}
+                      <div>
+                        <div className="w-full px-2 py-0.5 text-xs text-gray-500 bg-white/80 border-t border-gray-100 flex items-center justify-center min-h-0 leading-tight">
+                          <span className="truncate">
+                            {creditMap[mountain.id]?.author || 'Wikimedia Commons'}
+                            {creditMap[mountain.id]?.license ? ` / ${creditMap[mountain.id]?.license}` : ''}
+                          </span>
+                        </div>
+                        <div className="p-6">
+                          <div className="flex items-center justify-between mb-2">
+                            <h2 className="text-xl font-semibold text-gray-900 group-hover:text-indigo-600">
+                              {mountain.name}
+                            </h2>
+                            <span className="text-sm text-gray-600">
+                              {mountain.elevation}m
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-600 mb-2">
+                            {mountain.prefecture || '-'}
+                          </p>
+                          <div className="flex items-center space-x-2">
+                            {mountain.difficulty_level && (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                {mountain.difficulty_level}
+                              </span>
+                            )}
+                            {mountain.best_season && (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                {mountain.best_season}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  </Link>
                 </div>
-              </Link>
-            ))}
+              );
+            })}
           </div>
           {/* ページネーション */}
           {totalPages > 1 && (
@@ -677,96 +626,102 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {currentMountains.map((mountain) => (
-              <Link
-                key={mountain.id}
-                href={`/mountains/${mountain.id}`}
-                className="block group"
-              >
-                <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 relative">
-                  {/* お気に入りボタン */}
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      toggleFavorite(mountain.id);
-                    }}
-                    className="absolute top-3 right-3 z-10 p-2 rounded-full bg-white/80 hover:bg-white shadow-sm"
+            {currentMountains.map((mountain) => {
+              const imgObj = toDisplayImageUrl(mountain.photo_url, 640);
+              return (
+                <div key={mountain.id}>
+                  <Link
+                    href={`/mountains/${mountain.id}`}
+                    className="block group"
                   >
-                    {favorites.has(mountain.id) ? (
-                      <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
-                      </svg>
-                    ) : (
-                      <svg className="w-5 h-5 text-gray-400 hover:text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                      </svg>
-                    )}
-                  </button>
+                    <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 relative">
+                      {/* お気に入りボタン */}
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          toggleFavorite(mountain.id);
+                        }}
+                        className="absolute top-3 right-3 z-10 p-2 rounded-full bg-white/80 hover:bg-white shadow-sm"
+                      >
+                        {favorites.has(mountain.id) ? (
+                          <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                          </svg>
+                        ) : (
+                          <svg className="w-5 h-5 text-gray-400 hover:text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                          </svg>
+                        )}
+                      </button>
 
-                  {/* 山の画像 */}
-      {toDisplayImageUrl(mountain.photo_url, 640) ? (
-                    <div className="relative h-48 w-full">
-                      {(() => {
-                        const img = toDisplayImageUrl(mountain.photo_url, 640)!
-                        return (
-                          <>
-                            <Image
-                              src={img.src}
-                              alt={`${mountain.name} の写真`}
-                              fill
-                              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                              className="object-cover"
-                              priority={false}
-                              unoptimized={process.env.NEXT_PUBLIC_IMAGE_UNOPTIMIZED === 'true'}
-                            />
-                            <button
-                              type="button"
-                              aria-label="画像のクレジット/ライセンスを開く"
-                              title="画像のクレジット/ライセンス"
-                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(img.filePageUrl, '_blank', 'noopener,noreferrer'); }}
-                              className="absolute inset-0 cursor-pointer bg-transparent"
-                              style={{ background: 'transparent' }}
-                            />
-                          </>
-                        )
-                      })()}
-                    </div>
-                  ) : (
-                    <div className="h-48 bg-gradient-to-br from-green-400 to-blue-500" />
-                  )}
-                  <div className="p-6">
-                    <div className="flex items-center justify-between mb-2">
-                      <h2 className="text-xl font-semibold text-gray-900 group-hover:text-indigo-600">
-                        {mountain.name}
-                      </h2>
-                      <span className="text-sm text-gray-600">
-                        {mountain.elevation}m
-                      </span>
-                    </div>
-                    {mountain.category !== null && mountain.category !== undefined && (
-                      <p className="text-xs text-gray-500 mb-1">
-                        カテゴリ: {mountain.category} / 順位: {mountain.category_order ?? '-'}
-                      </p>
-                    )}
-                    <p className="text-sm text-gray-600 mb-2">
-                      {mountain.prefecture}
-                    </p>
-                    <div className="flex items-center space-x-2">
-                      {mountain.difficulty_level && (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          {mountain.difficulty_level}
-                        </span>
+                      {/* 山の画像 */}
+                      {imgObj ? (
+                        <div className="relative h-48 w-full">
+                          <Image
+                            src={imgObj.src}
+                            alt={`${mountain.name} の写真`}
+                            fill
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                            className="object-cover"
+                            priority={false}
+                            unoptimized={process.env.NEXT_PUBLIC_IMAGE_UNOPTIMIZED === 'true'}
+                          />
+                          <button
+                            type="button"
+                            aria-label="画像のクレジット/ライセンスを開く"
+                            title="画像のクレジット/ライセンス"
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(imgObj.filePageUrl, '_blank', 'noopener,noreferrer'); }}
+                            className="absolute inset-0 cursor-pointer bg-transparent"
+                            style={{ background: 'transparent' }}
+                          />
+                        </div>
+                      ) : (
+                        <div className="h-48 bg-gradient-to-br from-green-400 to-blue-500" />
                       )}
-                      {mountain.best_season && (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          {mountain.best_season}
-                        </span>
-                      )}
+                      {/* 画像下に常時表示のCreditエリア＋山情報を1つの親divでラップ */}
+                      <div>
+                        <div className="w-full px-2 py-0.5 text-xs text-gray-500 bg-white/80 border-t border-gray-100 flex items-center justify-center min-h-0 leading-tight">
+                          <span className="truncate">
+                            {creditMap[mountain.id]?.author || 'Wikimedia Commons'}
+                            {creditMap[mountain.id]?.license ? ` / ${creditMap[mountain.id]?.license}` : ''}
+                          </span>
+                        </div>
+                        <div className="p-6">
+                          <div className="flex items-center justify-between mb-2">
+                            <h2 className="text-xl font-semibold text-gray-900 group-hover:text-indigo-600">
+                              {mountain.name}
+                            </h2>
+                            <span className="text-sm text-gray-600">
+                              {mountain.elevation}m
+                            </span>
+                          </div>
+                          {mountain.category !== null && mountain.category !== undefined && (
+                            <p className="text-xs text-gray-500 mb-1">
+                              カテゴリ: {mountain.category} / 順位: {mountain.category_order ?? '-'}
+                            </p>
+                          )}
+                          <p className="text-sm text-gray-600 mb-2">
+                            {mountain.prefecture}
+                          </p>
+                          <div className="flex items-center space-x-2">
+                            {mountain.difficulty_level && (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                {mountain.difficulty_level}
+                              </span>
+                            )}
+                            {mountain.best_season && (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                {mountain.best_season}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  </Link>
                 </div>
-              </Link>
-            ))}
+              );
+            })}
           </div>
         )}
 
