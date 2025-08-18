@@ -12,10 +12,10 @@ import { WeatherMapIntegration, ImageGalleryWrapper } from '@/components/Mountai
 export default async function MountainPage({
   params
 }: {
-  params: Promise<{ id: string }>
+  params: { id: string }
 }) {
   try {
-    const { id } = await params;
+    const { id } = params;
     const [mountain, reviews, publicPlans, publicClimbs] = await Promise.all([
       getMountainWithRoutes(id),
       getMountainReviews(id),
@@ -32,34 +32,57 @@ export default async function MountainPage({
     const longitude = mountain.longitude || 138.727500;
 
     // WikipediaなどのページURLを表示用の画像URLに正規化
-    const toDisplayImageUrl = (url: string | null | undefined): string | null => {
-      if (!url) return null;
-      try {
-        const u = new URL(url);
-        if (u.hostname === 'upload.wikimedia.org') return url;
-        if ((u.hostname.endsWith('wikipedia.org') || u.hostname.endsWith('wikimedia.org')) && u.pathname.startsWith('/wiki/')) {
-          if (/\/wiki\/Special:FilePath\//.test(u.pathname)) {
-            return url;
+      const toDisplayImageUrl = (url: string | null | undefined, targetWidth = 1200): { src: string, filePageUrl: string } | null => {
+        if (!url) return null;
+        let external: string | null = null;
+        let filePageUrl: string | null = null;
+        try {
+          const u = new URL(url);
+          if (u.hostname === 'upload.wikimedia.org') {
+            const parts = u.pathname.split('/')
+            const isThumb = parts.includes('thumb')
+            const rawName = isThumb ? parts[parts.length - 2] : parts[parts.length - 1]
+            const fileName = decodeURIComponent(rawName)
+            if (fileName) {
+              external = `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(fileName)}?width=${targetWidth}`
+              // クリック先は原本のアップロードURLに統一
+              filePageUrl = u.toString()
+            }
           }
-          const fileFromHash = u.hash && u.hash.startsWith('#/media/') ? decodeURIComponent(u.hash.replace('#/media/', '')) : '';
-          const fileFromPath = decodeURIComponent(u.pathname.replace('/wiki/', ''));
-          if (fileFromHash) {
-            const fileName = fileFromHash.replace(/^ファイル:|^File:/i, '');
-            return `${u.protocol}//${u.hostname}/wiki/Special:FilePath/${encodeURIComponent(fileName)}`;
+          if (!external && (u.hostname.endsWith('wikipedia.org') || u.hostname.endsWith('wikimedia.org'))) {
+            if (/\/wiki\/Special:FilePath\//.test(u.pathname)) {
+              try {
+                const cu = new URL(url)
+                if (!cu.searchParams.has('width')) cu.searchParams.set('width', String(targetWidth))
+                external = cu.toString()
+                const name = cu.pathname.replace('/wiki/Special:FilePath/', '')
+                filePageUrl = `https://ja.wikipedia.org/wiki/%E6%97%A5%E6%9C%AC%E7%99%BE%E5%90%8D%E5%B1%B1#/media/File:${encodeURIComponent(decodeURIComponent(name))}`
+              } catch {
+                external = url;
+              }
+            } else if (u.pathname.startsWith('/wiki/')) {
+              const fileFromHash = u.hash && u.hash.startsWith('#/media/') ? decodeURIComponent(u.hash.replace('#/media/', '')) : '';
+              const fileFromPath = decodeURIComponent(u.pathname.replace('/wiki/', ''));
+              if (fileFromHash) {
+                const fileName = fileFromHash.replace(/^ファイル:|^File:/i, '');
+                external = `${u.protocol}//${u.hostname}/wiki/Special:FilePath/${encodeURIComponent(fileName)}?width=${targetWidth}`;
+                filePageUrl = `https://ja.wikipedia.org/wiki/%E6%97%A5%E6%9C%AC%E7%99%BE%E5%90%8D%E5%B1%B1#/media/File:${encodeURIComponent(fileName)}`
+              } else if (/^(?:ファイル:|File:)/i.test(fileFromPath)) {
+                const fileName = fileFromPath.replace(/^ファイル:|^File:/i, '');
+                external = `${u.protocol}//${u.hostname}/wiki/Special:FilePath/${encodeURIComponent(fileName)}?width=${targetWidth}`;
+                filePageUrl = `https://ja.wikipedia.org/wiki/%E6%97%A5%E6%9C%AC%E7%99%BE%E5%90%8D%E5%B1%B1#/media/File:${encodeURIComponent(fileName)}`
+              }
+            }
           }
-          if (/^(?:ファイル:|File:)/i.test(fileFromPath)) {
-            const fileName = fileFromPath.replace(/^ファイル:|^File:/i, '');
-            return `${u.protocol}//${u.hostname}/wiki/Special:FilePath/${encodeURIComponent(fileName)}`;
-          }
-          return null;
+        } catch {
+          external = null;
         }
-      } catch {
-        return null;
-      }
-      return url;
+      if (!external) return null;
+      const b64url = Buffer.from(external, 'utf-8').toString('base64').replace(/=+$/,'').replace(/\+/g,'-').replace(/\//g,'_');
+      return { src: `/api/image?u=${b64url}`, filePageUrl: filePageUrl || external };
     };
 
-    const coverUrl = toDisplayImageUrl(mountain.photo_url);
+  const cover = toDisplayImageUrl(mountain.photo_url, 1200);
 
     return (
       <div className="py-8">
@@ -68,9 +91,10 @@ export default async function MountainPage({
           {/* ヘッダーセクション */}
           <div className="relative pb-8">
             <div className="relative h-64 w-full overflow-hidden rounded-lg">
-              {coverUrl ? (
+              {cover ? (
+                <a href={cover.filePageUrl} target="_blank" rel="noopener noreferrer" title="画像のクレジット/ライセンス">
                   <Image
-                  src={coverUrl}
+                  src={cover.src}
                   alt={`${mountain.name} の写真`}
                   fill
                   sizes="100vw"
@@ -78,6 +102,7 @@ export default async function MountainPage({
                     unoptimized={process.env.NEXT_PUBLIC_IMAGE_UNOPTIMIZED === 'true'}
                   priority
                 />
+                </a>
               ) : (
                 <div className="h-full w-full bg-gray-200" />
               )}
@@ -87,12 +112,14 @@ export default async function MountainPage({
               <div className="absolute bottom-0 left-0 right-0 px-4 py-4 sm:px-6 sm:py-6">
                 <h1 className="text-3xl sm:text-4xl font-bold text-white drop-shadow">
                   {mountain.name}
-                  <span className="text-xl sm:text-2xl ml-2 font-normal">
-                    ({mountain.elevation}m)
-                  </span>
+                  {typeof mountain.elevation === 'number' && Number.isFinite(mountain.elevation) && (
+                    <span className="text-xl sm:text-2xl ml-2 font-normal">
+                      ({mountain.elevation}m)
+                    </span>
+                  )}
                 </h1>
                 <p className="mt-1 sm:mt-2 text-white/90 drop-shadow">
-                  {mountain.prefecture}
+                  {mountain.prefecture || '-'}
                 </p>
                 <p className="mt-1 text-white/80 text-xs sm:text-sm drop-shadow">
                   カテゴリ: {mountain.category ?? '-'} / 順位: {mountain.category_order ?? '-'}

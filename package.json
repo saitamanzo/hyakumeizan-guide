@@ -6,7 +6,20 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+  "db:list-mountain-names": "node scripts/list-mountain-names.mjs",
+  "set-photo": "node scripts/set-photo.mjs",
+  "normalize-photo-urls": "node scripts/normalize-photo-urls.mjs",
+  "normalize-photo-urls:apply": "node scripts/normalize-photo-urls.mjs --apply",
+  "photos:from-ja-wiki": "node scripts/update-photos-from-ja-wikipedia.mjs",
+  "photos:from-ja-wiki:apply": "node scripts/update-photos-from-ja-wikipedia.mjs --apply",
+  "db:insert-missing-mountains": "node scripts/insert-missing-mountains.mjs",
+  "db:insert-missing-mountains:apply": "node scripts/insert-missing-mountains.mjs --apply",
+  "categories:update": "node scripts/update-mountain-categories.mjs",
+  "categories:update:apply": "node scripts/update-mountain-categories.mjs --apply",
+  "db:rename-mountain": "node scripts/rename-mountain.mjs",
+  "db:rename-mountain:apply": "node scripts/rename-mountain.mjs --apply",
+  "db:merge-mountains": "node scripts/merge-duplicate-mountains.mjs",
+  "db:prune-extra": "node scripts/find-and-prune-extra-mountain.mjs"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.7",

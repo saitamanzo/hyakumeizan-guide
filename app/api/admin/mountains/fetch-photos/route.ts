@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import { toOriginalUploadFromUploadUrl } from '@/lib/wikimedia'
 
 // 簡易: Wikipedia/Wikimediaから各山の代表画像を1枚取得して mountains.photo_url を更新
 // 注意: 本APIは管理者のみ実行可。過剰な呼び出しはWikimediaのレート制限に配慮してください。
@@ -34,7 +35,9 @@ async function fetchWikimediaImage(title: string): Promise<string | null> {
   if (!tn || typeof tn !== 'object') return null
   const src = (tn as Record<string, unknown>).source
   const thumb = typeof src === 'string' ? src : undefined
-    return thumb || null
+  if (!thumb) return null
+  const orig = toOriginalUploadFromUploadUrl(thumb)
+  return orig || thumb
   } catch {
     return null
   }

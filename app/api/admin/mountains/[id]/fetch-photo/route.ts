@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { toOriginalUploadFromUploadUrl } from '@/lib/wikimedia'
 
 async function fetchWikimediaImage(title: string): Promise<string | null> {
   try {
@@ -28,9 +29,11 @@ async function fetchWikimediaImage(title: string): Promise<string | null> {
     if (!first || typeof first !== 'object') return null
     const tn = (first as Record<string, unknown>).thumbnail
     if (!tn || typeof tn !== 'object') return null
-    const src = (tn as Record<string, unknown>).source
-    const thumb = typeof src === 'string' ? src : undefined
-    return thumb || null
+  const src = (tn as Record<string, unknown>).source
+  const thumb = typeof src === 'string' ? src : undefined
+  if (!thumb) return null
+  const orig = toOriginalUploadFromUploadUrl(thumb)
+  return orig || thumb
   } catch {
     return null
   }
