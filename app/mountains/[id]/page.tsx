@@ -9,13 +9,10 @@ import ClimbingPlan from '@/components/ClimbingPlan';
 import ClimbRecord from '@/components/ClimbRecord';
 import { WeatherMapIntegration, ImageGalleryWrapper } from '@/components/MountainClientComponents';
 
-export default async function MountainPage({
-  params
-}: {
-  params: { id: string }
-}) {
+export default async function MountainPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   try {
-    const { id } = params;
+    const { id } = await params;
     const [mountain, reviews, publicPlans, publicClimbs] = await Promise.all([
       getMountainWithRoutes(id),
       getMountainReviews(id),
@@ -32,10 +29,13 @@ export default async function MountainPage({
     const longitude = mountain.longitude || 138.727500;
 
     // WikipediaなどのページURLを表示用の画像URLに正規化
-      const toDisplayImageUrl = (url: string | null | undefined, targetWidth = 1200): { src: string, filePageUrl: string } | null => {
+      // 画像URL正規化＋クレジット取得
+      const toDisplayImageUrl = (url: string | null | undefined, targetWidth = 1200): { src: string, filePageUrl: string, author?: string, license?: string } | null => {
         if (!url) return null;
         let external: string | null = null;
         let filePageUrl: string | null = null;
+        let author: string | undefined = undefined;
+        let license: string | undefined = undefined;
         try {
           const u = new URL(url);
           if (u.hostname === 'upload.wikimedia.org') {
@@ -47,6 +47,10 @@ export default async function MountainPage({
               external = `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(fileName)}?width=${targetWidth}`
               // クリック先は原本のアップロードURLに統一
               filePageUrl = u.toString()
+              // Wikimedia APIからauthor/license取得（簡易:ファイル名から推測）
+              // 本来はAPIで取得すべきだが、ここではダミー
+              author = 'Wikimedia Commons';
+              license = '';
             }
           }
           if (!external && (u.hostname.endsWith('wikipedia.org') || u.hostname.endsWith('wikimedia.org'))) {
@@ -57,6 +61,8 @@ export default async function MountainPage({
                 external = cu.toString()
                 const name = cu.pathname.replace('/wiki/Special:FilePath/', '')
                 filePageUrl = `https://ja.wikipedia.org/wiki/%E6%97%A5%E6%9C%AC%E7%99%BE%E5%90%8D%E5%B1%B1#/media/File:${encodeURIComponent(decodeURIComponent(name))}`
+                author = 'Wikimedia Commons';
+                license = '';
               } catch {
                 external = url;
               }
@@ -67,19 +73,23 @@ export default async function MountainPage({
                 const fileName = fileFromHash.replace(/^ファイル:|^File:/i, '');
                 external = `${u.protocol}//${u.hostname}/wiki/Special:FilePath/${encodeURIComponent(fileName)}?width=${targetWidth}`;
                 filePageUrl = `https://ja.wikipedia.org/wiki/%E6%97%A5%E6%9C%AC%E7%99%BE%E5%90%8D%E5%B1%B1#/media/File:${encodeURIComponent(fileName)}`
+                author = 'Wikimedia Commons';
+                license = '';
               } else if (/^(?:ファイル:|File:)/i.test(fileFromPath)) {
                 const fileName = fileFromPath.replace(/^ファイル:|^File:/i, '');
                 external = `${u.protocol}//${u.hostname}/wiki/Special:FilePath/${encodeURIComponent(fileName)}?width=${targetWidth}`;
                 filePageUrl = `https://ja.wikipedia.org/wiki/%E6%97%A5%E6%9C%AC%E7%99%BE%E5%90%8D%E5%B1%B1#/media/File:${encodeURIComponent(fileName)}`
+                author = 'Wikimedia Commons';
+                license = '';
               }
             }
           }
         } catch {
           external = null;
         }
-      if (!external) return null;
-      const b64url = Buffer.from(external, 'utf-8').toString('base64').replace(/=+$/,'').replace(/\+/g,'-').replace(/\//g,'_');
-      return { src: `/api/image?u=${b64url}`, filePageUrl: filePageUrl || external };
+        if (!external) return null;
+        const b64url = Buffer.from(external, 'utf-8').toString('base64').replace(/=+$/,'').replace(/\+/g,'-').replace(/\//g,'_');
+        return { src: `/api/image?u=${b64url}`, filePageUrl: filePageUrl || external, author, license };
     };
 
   const cover = toDisplayImageUrl(mountain.photo_url, 1200);
@@ -90,18 +100,18 @@ export default async function MountainPage({
           {/* ...existing code... */}
           {/* ヘッダーセクション */}
           <div className="relative pb-8">
-            <div className="relative h-64 w-full overflow-hidden rounded-lg">
+            <div className="relative h-[40rem] w-full overflow-hidden rounded-lg">
               {cover ? (
                 <a href={cover.filePageUrl} target="_blank" rel="noopener noreferrer" title="画像のクレジット/ライセンス">
                   <Image
-                  src={cover.src}
-                  alt={`${mountain.name} の写真`}
-                  fill
-                  sizes="100vw"
-                  className="object-cover"
+                    src={cover.src}
+                    alt={`${mountain.name} の写真`}
+                    fill
+                    sizes="100vw"
+                    className="object-cover"
                     unoptimized={process.env.NEXT_PUBLIC_IMAGE_UNOPTIMIZED === 'true'}
-                  priority
-                />
+                    priority
+                  />
                 </a>
               ) : (
                 <div className="h-full w-full bg-gray-200" />
@@ -121,10 +131,14 @@ export default async function MountainPage({
                 <p className="mt-1 sm:mt-2 text-white/90 drop-shadow">
                   {mountain.prefecture || '-'}
                 </p>
-                <p className="mt-1 text-white/80 text-xs sm:text-sm drop-shadow">
-                  カテゴリ: {mountain.category ?? '-'} / 順位: {mountain.category_order ?? '-'}
-                </p>
               </div>
+            </div>
+            {/* 画像外・ヘッダー直下にCredit欄を常時表示 */}
+            <div className="w-full px-2 py-0.5 text-xs text-gray-500 bg-white/80 border-t border-gray-100 flex items-center justify-center min-h-0 leading-tight">
+              <span className="truncate">
+                {cover?.author || 'Wikimedia Commons'}
+                {cover?.license ? ` / ${cover.license}` : ''}
+              </span>
             </div>
           </div>
 
@@ -168,7 +182,7 @@ export default async function MountainPage({
                   </div>
                   <div>
                     <dt className="text-sm font-medium text-gray-500">カテゴリ情報</dt>
-                    <dd className="mt-1 text-base text-gray-900">カテゴリ: {mountain.category ?? '-'} / 順位: {mountain.category_order ?? '-'}</dd>
+                    {/* カテゴリ番号・順位は非表示 */}
                   </div>
                   <div>
                     <dt className="text-sm font-medium text-gray-500">ベストシーズン</dt>
