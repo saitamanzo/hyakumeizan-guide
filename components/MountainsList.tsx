@@ -1,5 +1,17 @@
-  "use client";
-  // カテゴリ番号→地域名マップ
+
+"use client";
+// カテゴリ番号→地域名マップ
+const CATEGORY_MAP: Record<number, string> = {
+  1: '北海道',
+  2: '東北',
+  3: '上信越',
+  4: '関東',
+  5: '中部',
+  6: '北陸',
+  7: '近畿',
+  8: '中国・四国',
+  9: '九州',
+};
 
 
 
@@ -429,6 +441,11 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
                             </span>
                           </div>
                           <p className="text-sm text-gray-600 mb-2">
+                            {mountain.category && (
+                              <span className="mr-2 text-xs text-gray-500">
+                                {CATEGORY_MAP[mountain.category] || `カテゴリ${mountain.category}`}
+                              </span>
+                            )}
                             {mountain.prefecture || '-'}
                           </p>
                           <div className="flex items-center space-x-2">

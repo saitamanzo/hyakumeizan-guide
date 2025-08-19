@@ -1,3 +1,15 @@
+// カテゴリ番号→地域名マップ
+const CATEGORY_MAP: Record<number, string> = {
+  1: '北海道',
+  2: '東北',
+  3: '上信越',
+  4: '関東',
+  5: '中部',
+  6: '北陸',
+  7: '近畿',
+  8: '中国・四国',
+  9: '九州',
+};
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
 import { getMountainWithRoutes, getMountainReviews } from '@/app/actions/mountain';
@@ -12,7 +24,6 @@ import { WeatherMapIntegration, ImageGalleryWrapper } from '@/components/Mountai
 export default async function MountainPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
-    const { id } = await params;
     const [mountain, reviews, publicPlans, publicClimbs] = await Promise.all([
       getMountainWithRoutes(id),
       getMountainReviews(id),
@@ -181,8 +192,10 @@ export default async function MountainPage({ params }: { params: Promise<{ id: s
                     <dd className="mt-1 text-base text-gray-900">{mountain.location}</dd>
                   </div>
                   <div>
-                    <dt className="text-sm font-medium text-gray-500">カテゴリ情報</dt>
-                    {/* カテゴリ番号・順位は非表示 */}
+                    <dt className="text-sm font-medium text-gray-500">カテゴリ</dt>
+                    <dd className="mt-1 text-base text-gray-900">
+                      {mountain.category ? CATEGORY_MAP[mountain.category] || `カテゴリ${mountain.category}` : '情報なし'}
+                    </dd>
                   </div>
                   <div>
                     <dt className="text-sm font-medium text-gray-500">ベストシーズン</dt>
