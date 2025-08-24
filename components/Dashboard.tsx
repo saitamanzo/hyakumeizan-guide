@@ -2,8 +2,68 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useAuth } from '@/components/auth/AuthProvider';
+import { createClient } from '@/lib/supabase/client';
 import type { Mountain } from '@/types/database';
+// 山画像URL正規化関数（MountainsList.tsxより移植）
+function toBase64Url(url: string): string {
+  if (typeof window === 'undefined') return '';
+  return btoa(url);
+}
+const toDisplayImageUrl = (url: string | null | undefined, targetWidth = 640): { src: string; filePageUrl: string } | null => {
+  if (!url) return null;
+  let external: string | null = null;
+  let filePageUrl: string | null = null;
+  try {
+    const u = new URL(url);
+    if (u.hostname === 'upload.wikimedia.org') {
+      const parts = u.pathname.split('/');
+      const isThumb = parts.includes('thumb');
+      const rawName = isThumb ? parts[parts.length - 2] : parts[parts.length - 1];
+      const fileName = decodeURIComponent(rawName);
+      if (fileName) {
+        external = `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(fileName)}?width=${targetWidth}`;
+        filePageUrl = u.toString();
+      }
+    }
+    if (!external && (u.hostname.endsWith('wikipedia.org') || u.hostname.endsWith('wikimedia.org'))) {
+      if (/\/wiki\/Special:FilePath\//.test(u.pathname)) {
+        try {
+          const cu = new URL(url);
+          if (!cu.searchParams.has('width')) {
+            cu.searchParams.set('width', String(targetWidth));
+            external = cu.toString();
+          } else {
+            external = url;
+          }
+          const name = cu.pathname.replace('/wiki/Special:FilePath/', '');
+          if (name) filePageUrl = `https://commons.wikimedia.org/wiki/File:${encodeURIComponent(decodeURIComponent(name))}`;
+        } catch {
+          external = url;
+        }
+      } else if (u.pathname.startsWith('/wiki/')) {
+        const fileFromHash = u.hash && u.hash.startsWith('#/media/') ? decodeURIComponent(u.hash.replace('#/media/', '')) : '';
+        const fileFromPath = decodeURIComponent(u.pathname.replace('/wiki/', ''));
+        if (fileFromHash) {
+          const fileName = fileFromHash.replace(/^ファイル:|^File:/i, '');
+          external = `${u.protocol}//${u.hostname}/wiki/Special:FilePath/${encodeURIComponent(fileName)}?width=${targetWidth}`;
+          filePageUrl = `https://commons.wikimedia.org/wiki/File:${encodeURIComponent(fileName)}`;
+        } else if (/^(?:ファイル:|File:)/i.test(fileFromPath)) {
+          const fileName = fileFromPath.replace(/^ファイル:|^File:/i, '');
+          external = `${u.protocol}//${u.hostname}/wiki/Special:FilePath/${encodeURIComponent(fileName)}?width=${targetWidth}`;
+          filePageUrl = `https://commons.wikimedia.org/wiki/File:${encodeURIComponent(fileName)}`;
+        }
+      }
+    }
+  } catch {
+    external = null;
+  }
+  if (!external) return null;
+  const b64url = toBase64Url(external);
+  if (!b64url) return null;
+  return { src: `/api/image?u=${b64url}`, filePageUrl: filePageUrl || external };
+};
 
 interface DashboardStats {
   favoritesCount: number;
@@ -25,29 +85,35 @@ export default function Dashboard({ mountains }: DashboardProps) {
   const [recentFavorites, setRecentFavorites] = useState<Mountain[]>([]);
 
   useEffect(() => {
-    // ログインしていない場合は統計を取得しない
     if (!user) return;
+    const supabase = createClient();
 
-    // ローカルストレージからデータを取得
-    const favorites = JSON.parse(localStorage.getItem('mountainFavorites') || '[]');
-    const reviews = JSON.parse(localStorage.getItem('mountainReviews') || '[]');
-    
-    // 画像数をカウント
-    let totalImages = 0;
-    mountains.forEach(mountain => {
-      const images = JSON.parse(localStorage.getItem(`mountain_images_${mountain.id}`) || '[]');
-      totalImages += images.length;
-    });
+    // 各種統計を取得
+    const fetchStats = async () => {
+      // お気に入り
+      const { data: favData, error: favError } = await supabase
+        .from('mountain_favorites')
+        .select('mountain_id')
+        .eq('user_id', user.id);
+      const favoriteIds = (favData ?? []).map((like: { mountain_id: string }) => like.mountain_id);
+      setStats((prev) => ({ ...prev, favoritesCount: favError ? 0 : favoriteIds.length }));
+      setRecentFavorites(mountains.filter(m => favoriteIds.includes(m.id)).slice(0, 6));
 
-    setStats({
-      favoritesCount: favorites.length,
-      reviewsCount: reviews.length,
-      uploadedImagesCount: totalImages
-    });
+      // レビュー
+      const { count: reviewCount, error: reviewError } = await supabase
+        .from('reviews')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id);
+      setStats((prev) => ({ ...prev, reviewsCount: reviewError ? 0 : (reviewCount ?? 0) }));
 
-    // 最近のお気に入りを取得
-    const favoriteMountains = mountains.filter(mountain => favorites.includes(mountain.id));
-    setRecentFavorites(favoriteMountains.slice(0, 6));
+      // 写真
+      const { count: photoCount, error: photoError } = await supabase
+        .from('climb_photos')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id);
+      setStats((prev) => ({ ...prev, uploadedImagesCount: photoError ? 0 : (photoCount ?? 0) }));
+    };
+    fetchStats();
   }, [mountains, user]);
 
   // ログインしていない場合は何も表示しない
@@ -148,24 +214,41 @@ export default function Dashboard({ mountains }: DashboardProps) {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {recentFavorites.map((mountain) => (
-                <Link
-                  key={mountain.id}
-                  href={`/mountains/${mountain.id}`}
-                  className="block group"
-                >
-                  <div className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow duration-300">
-                    <div className="h-32 bg-gradient-to-br from-green-400 to-blue-500 rounded-t-lg"></div>
-                    <div className="p-4">
-                      <h3 className="font-semibold text-gray-900 group-hover:text-indigo-600">
-                        {mountain.name}
-                      </h3>
-                      <p className="text-sm text-gray-600">{mountain.prefecture}</p>
-                      <p className="text-sm text-gray-500">{mountain.elevation}m</p>
+              {recentFavorites.map((mountain) => {
+                const imgObj = toDisplayImageUrl(mountain.photo_url, 640);
+                return (
+                  <Link
+                    key={mountain.id}
+                    href={`/mountains/${mountain.id}`}
+                    className="block group"
+                  >
+                    <div className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow duration-300">
+                      {imgObj ? (
+                        <div className="relative h-32 w-full">
+                          <Image
+                            src={imgObj.src}
+                            alt={`${mountain.name} の写真`}
+                            fill
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                            className="object-cover rounded-t-lg"
+                            priority={false}
+                            unoptimized={process.env.NEXT_PUBLIC_IMAGE_UNOPTIMIZED === 'true'}
+                          />
+                        </div>
+                      ) : (
+                        <div className="h-32 bg-gradient-to-br from-green-400 to-blue-500 rounded-t-lg"></div>
+                      )}
+                      <div className="p-4">
+                        <h3 className="font-semibold text-gray-900 group-hover:text-indigo-600">
+                          {mountain.name}
+                        </h3>
+                        <p className="text-sm text-gray-600">{mountain.prefecture}</p>
+                        <p className="text-sm text-gray-500">{mountain.elevation}m</p>
+                      </div>
                     </div>
-                  </div>
-                </Link>
-              ))}
+                  </Link>
+                );
+              })}
             </div>
           )}
         </div>

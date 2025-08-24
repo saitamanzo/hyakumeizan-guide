@@ -38,7 +38,7 @@ export interface PlanWithMountain extends Plan {
  */
 export async function getPublicPlans(limit: number = 50): Promise<PlanWithMountain[]> {
   try {
-    const { data, error } = await supabase
+    const { data, error }: { data: any[] | null; error: any } = await supabase
       .from('plans')
       .select(`
         *,
@@ -50,23 +50,25 @@ export async function getPublicPlans(limit: number = 50): Promise<PlanWithMounta
       .order('published_at', { ascending: false })
       .limit(limit);
 
-    if (error) {
-      console.error('公開登山計画取得エラー:', error);
+    if (error && (error.message || Object.keys(error).length > 0)) {
+      console.error('公開登山計画取得エラー:', error.message || error);
+      return [];
+    }
+    if (!data || !Array.isArray(data)) {
+      console.error('公開登山計画取得エラー: データが取得できません', { data });
       return [];
     }
 
-    const result = (data || []).map(plan => ({
+    return data.map(plan => ({
       ...plan,
-      mountain_name: Array.isArray(plan.mountains) 
-        ? plan.mountains[0]?.name 
+      mountain_name: Array.isArray(plan.mountains)
+        ? plan.mountains[0]?.name
         : plan.mountains?.name || '不明',
       user: Array.isArray(plan.users)
         ? plan.users[0]
         : plan.users,
       like_count: Array.isArray(plan.plan_favorites) ? plan.plan_favorites[0]?.count || 0 : 0
     }));
-
-    return result;
   } catch (error) {
     console.error('公開登山計画取得例外:', error);
     return [];

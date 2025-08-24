@@ -173,7 +173,8 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
       setLoadingFavorites(false);
       return;
     }
-    const favoriteIds = new Set((data ?? []).map((like: { mountain_id: string }) => like.mountain_id));
+    const favoriteIdsArr = (data ?? []).map((like: { mountain_id: string }) => like.mountain_id);
+    const favoriteIds = new Set(favoriteIdsArr);
     setFavorites(favoriteIds);
     setLoadingFavorites(false);
   };
@@ -442,10 +443,12 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
                           </div>
                           <p className="text-sm text-gray-600 mb-2">
                             {mountain.category && (
-                              <span className="mr-2 text-xs text-gray-500">
-                                {CATEGORY_MAP[mountain.category] || `カテゴリ${mountain.category}`}
-                              </span>
-                            )}
+                                <span className="mr-2 text-xs text-gray-500">
+                                  {mountain.category === 1
+                                    ? CATEGORY_MAP[mountain.category] || `カテゴリ${mountain.category}`
+                                    : `${mountain.category}＝${CATEGORY_MAP[mountain.category] || `カテゴリ${mountain.category}`}`}
+                                </span>
+                              )}
                             {mountain.prefecture || '-'}
                           </p>
                           <div className="flex items-center space-x-2">
@@ -696,9 +699,14 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
                               {mountain.elevation}m
                             </span>
                           </div>
-                          {/* カテゴリ番号・順位の表示を削除 */}
-                          <p className="text-sm text-gray-600 mb-2">
-                            {mountain.prefecture}
+                          {/* カテゴリ番号と地域名を都道府県の左に表示 */}
+                          <p className="text-sm text-gray-600 mb-2 flex items-center">
+                            {mountain.category && (
+                              <span className="mr-2 text-xs font-bold text-blue-900 bg-blue-50 rounded px-2 py-0.5 border border-blue-200">
+                                {CATEGORY_MAP[mountain.category] || `カテゴリ${mountain.category}`}
+                              </span>
+                            )}
+                            <span>{mountain.prefecture}</span>
                           </p>
                           <div className="flex items-center space-x-2">
                             {mountain.difficulty_level && (
