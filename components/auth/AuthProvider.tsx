@@ -36,6 +36,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [supabase]);
 
   const signOut = async () => {
+    if (!user) {
+      console.warn('AuthProvider: signOut called but user is null. Skipping signOut.');
+      return;
+    }
     console.log('AuthProvider: Signing out...');
     const { error } = await supabase.auth.signOut();
     if (error) {

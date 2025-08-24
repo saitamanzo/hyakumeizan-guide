@@ -1,5 +1,6 @@
-
-"use client";
+  "use client";
+  // 未ログイン時はお気に入りローディングを即終了
+  // （このコメントは任意、必要なら残す）
 // カテゴリ番号→地域名マップ
 const CATEGORY_MAP: Record<number, string> = {
   1: '北海道',
@@ -44,11 +45,10 @@ interface MountainsListProps {
 }
 
 export default function MountainsList({ initialMountains }: MountainsListProps) {
-  // 画像クレジット管理
+  const { user, loading: authLoading } = useAuth();
+
   const [creditMap, setCreditMap] = useState<Record<string, ImageCredit | null>>({});
-  // 検索・フィルタ後の山リスト
   const [filteredMountains, setFilteredMountains] = useState<Mountain[]>(initialMountains);
-  // ローディング状態
   const [isLoading, setIsLoading] = useState(false);
   const [mountains] = useState<Mountain[]>(initialMountains);
   const [searchQuery, setSearchQuery] = useState('');
@@ -57,8 +57,16 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [loadingFavorites, setLoadingFavorites] = useState(true);
-  const { user, loading: authLoading } = useAuth();
   const supabase = createClient();
+
+  // 未ログイン時はお気に入りローディングを即終了（authLoadingがfalseになった後も確実に解除）
+  useEffect(() => {
+    if (!authLoading && !user && loadingFavorites) {
+      setLoadingFavorites(false);
+    }
+  }, [authLoading, user, loadingFavorites]);
+
+  // ...（重複useEffectをすべて削除）...
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(12);
   const [filters, setFilters] = useState<SearchFilters>({
@@ -143,6 +151,8 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
       }
       return newFavorites;
     });
+    // userがnullでないことを再度チェック
+    if (!user) return;
     if (isFavorite) {
       await supabase
         .from('mountain_favorites')
@@ -165,9 +175,20 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
       return;
     }
     setLoadingFavorites(true);
+    // userがnullでないことを再度チェック
+    if (!user) {
+      setFavorites(new Set());
+      setLoadingFavorites(false);
+      return;
+    }
     const { data, error } = await supabase
       .from('mountain_favorites')
       .select('mountain_id');
+    if (!user) {
+      setFavorites(new Set());
+      setLoadingFavorites(false);
+      return;
+    }
     if (error) {
       setFavorites(new Set());
       setLoadingFavorites(false);

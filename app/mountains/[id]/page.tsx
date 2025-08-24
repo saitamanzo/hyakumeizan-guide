@@ -129,6 +129,12 @@ export default async function MountainPage({ params }: { params: Promise<{ id: s
               )}
               {/* グラデーションオーバーレイ */}
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+              {/* カテゴリバッジ（画像左上） */}
+              {mountain.category && (
+                <span className="absolute top-4 left-4 z-10 text-xs font-bold text-blue-900 bg-blue-50 rounded px-3 py-1 border border-blue-200 shadow">
+                  {CATEGORY_MAP[mountain.category] || `カテゴリ${mountain.category}`}
+                </span>
+              )}
               {/* タイトルエリア */}
               <div className="absolute bottom-0 left-0 right-0 px-4 py-4 sm:px-6 sm:py-6">
                 <h1 className="text-3xl sm:text-4xl font-bold text-white drop-shadow">
