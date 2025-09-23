@@ -86,6 +86,40 @@ async function queryOverpass(lat: string, lng: string, radius = '20000') {
   return data as OverpassResponse
 }
 
+// Simple in-memory cache
+const overpassCache = new Map<string, { ts: number, data: OverpassResponse }>()
+const CACHE_TTL = 1000 * 60 * 10 // 10 minutes
+
+async function cachedQueryOverpass(lat: string, lng: string, radius = '20000') {
+  const key = `${lat}:${lng}:${radius}`
+  const now = Date.now()
+  const hit = overpassCache.get(key)
+  if (hit && (now - hit.ts) < CACHE_TTL) return hit.data
+  const data = await queryOverpass(lat, lng, radius)
+  overpassCache.set(key, { ts: now, data })
+  return data
+}
+
+async function fetchWikimediaThumbnail(fileName: string): Promise<string | undefined> {
+  try {
+    const api = `https://commons.wikimedia.org/w/api.php?action=query&prop=imageinfo&iiprop=url&format=json&origin=*&titles=File:${encodeURIComponent(fileName)}`
+    const res = await fetch(api)
+    if (!res.ok) return undefined
+    const json = await res.json()
+    const pages = json.query?.pages
+    if (!pages) return undefined
+    for (const k of Object.keys(pages)) {
+      const p = pages[k]
+      const info = p.imageinfo && p.imageinfo[0]
+      if (info && info.thumburl) return info.thumburl as string
+      if (info && info.url) return info.url as string
+    }
+  } catch {
+    // ignore
+  }
+  return undefined
+}
+
 function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
   const toRad = (deg: number) => deg * Math.PI / 180
   const R = 6371e3 // meters
@@ -116,7 +150,7 @@ function extractImage(tags?: Record<string,string>) {
   return undefined
 }
 
-function groupByCategory(overpassData: OverpassResponse, centerLat: number, centerLon: number): PlacesResponse {
+async function groupByCategory(overpassData: OverpassResponse, centerLat: number, centerLon: number): Promise<PlacesResponse> {
   const out: PlacesResponse = {}
   const elements = Array.isArray(overpassData.elements) ? overpassData.elements : []
   for (const el of elements) {
@@ -133,7 +167,18 @@ function groupByCategory(overpassData: OverpassResponse, centerLat: number, cent
     const distance = (lat != null && lon != null) ? haversineDistance(centerLat, centerLon, lat, lon) : undefined
     const osm_url = osmUrlFor(el)
     const google_maps_url = googleMapsUrl(lat, lon)
-    const image = extractImage(el.tags)
+    let image = extractImage(el.tags)
+    // if it's a commons file like 'File:...' or tag 'wikimedia_commons' present, try to fetch a thumbnail
+    if (!image && el.tags) {
+      const candidate = el.tags.wikimedia_commons || el.tags.image || el.tags['image']
+      if (candidate) {
+        // candidate may be a URL or a file name; if it looks like a filename (no http), try fetch
+        if (!/^https?:\/\//i.test(candidate)) {
+          const thumb = await fetchWikimediaThumbnail(candidate)
+          if (thumb) image = thumb
+        }
+      }
+    }
     // attach metadata
     const enriched = { ...place, distance, osm_url, google_maps_url, image }
 
@@ -179,8 +224,8 @@ export async function GET(request: Request) {
     if (!lat || !lng) {
       return NextResponse.json({ error: 'lat and lng required' }, { status: 400 })
     }
-    const data = await queryOverpass(lat, lng, radius)
-    const grouped = groupByCategory(data, Number(lat), Number(lng))
+  const data = await cachedQueryOverpass(lat, lng, radius)
+  const grouped = await groupByCategory(data, Number(lat), Number(lng))
     // sort each category by distance asc
     for (const k of Object.keys(grouped)) {
       const withCoords = grouped[k].filter(p => p.lat != null && p.lon != null)
