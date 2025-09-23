@@ -64,41 +64,49 @@ const CATEGORY_QUERIES: Record<string, string> = {
   `,
 }
 
-async function queryOverpass(lat: string, lng: string, radius = '20000') {
-  // Build Overpass QL
-  const parts: string[] = []
-  for (const key of Object.keys(CATEGORY_QUERIES)) {
-    parts.push(CATEGORY_QUERIES[key])
-  }
-  const combined = parts.join('\n')
-  // request nodes/ways/relations, include center and geometry when available
-  const q = `[out:json][timeout:25];( ${combined} );out center tags geom;` 
-  const body = `data=${encodeURIComponent(q.replace(/LAT/g, lat).replace(/LNG/g, lng).replace(/RADIUS/g, radius))}`
+// (previous generic queryOverpass removed; we perform per-category queries with throttling)
 
+// Simple in-memory cache for Overpass combined responses
+const overpassCache = new Map<string, { ts: number, data: OverpassResponse }>()
+const CACHE_TTL = 1000 * 60 * 10 // 10 minutes
+
+// Perform query per category to allow rate control and smaller responses
+async function queryOverpassCategory(categoryKey: string, lat: string, lng: string, radius = '20000') {
+  const qTemplate = CATEGORY_QUERIES[categoryKey]
+  if (!qTemplate) return { elements: [] } as OverpassResponse
+  const q = `[out:json][timeout:25];( ${qTemplate} );out center tags geom;`
+  const body = `data=${encodeURIComponent(q.replace(/LAT/g, lat).replace(/LNG/g, lng).replace(/RADIUS/g, radius))}`
   const res = await fetch('https://overpass-api.de/api/interpreter', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body,
   })
   if (!res.ok) {
-    throw new Error(`Overpass API error ${res.status}`)
+    // return empty to avoid failing whole pipeline
+    return { elements: [] } as OverpassResponse
   }
   const data = await res.json()
   return data as OverpassResponse
 }
-
-// Simple in-memory cache
-const overpassCache = new Map<string, { ts: number, data: OverpassResponse }>()
-const CACHE_TTL = 1000 * 60 * 10 // 10 minutes
 
 async function cachedQueryOverpass(lat: string, lng: string, radius = '20000') {
   const key = `${lat}:${lng}:${radius}`
   const now = Date.now()
   const hit = overpassCache.get(key)
   if (hit && (now - hit.ts) < CACHE_TTL) return hit.data
-  const data = await queryOverpass(lat, lng, radius)
-  overpassCache.set(key, { ts: now, data })
-  return data
+
+  const categories = Object.keys(CATEGORY_QUERIES)
+  const allElements: OverpassElement[] = []
+  for (const cat of categories) {
+    // throttle between requests to be polite to Overpass
+    const resp = await queryOverpassCategory(cat, lat, lng, radius)
+    if (Array.isArray(resp.elements)) allElements.push(...resp.elements)
+    // small delay (200ms) between category requests
+    await new Promise((r) => setTimeout(r, 200))
+  }
+  const combined: OverpassResponse = { elements: allElements }
+  overpassCache.set(key, { ts: now, data: combined })
+  return combined
 }
 
 async function fetchWikimediaThumbnail(fileName: string): Promise<string | undefined> {
