@@ -98,8 +98,8 @@ export default function NearbyPlaces({ lat, lng, radius = 20000 }: { lat: number
               <div className="text-sm text-gray-500">該当スポットなし</div>
             ) : (
               <ul className="space-y-3">
-                {places.slice(0, 6).map(p => (
-                  <li key={p.id} className="flex items-start gap-3">
+                {places.slice(0, 6).map((p, i) => (
+                  <li key={`${p.id}-${i}`} className="flex items-start gap-3">
                     <div className="w-16 h-16 flex-shrink-0 rounded overflow-hidden bg-gray-100">
                       {p.image ? (
                         // eslint-disable-next-line @next/next/no-img-element
