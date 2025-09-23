@@ -1,44 +1,21 @@
 import { createClient } from './supabase/client';
+import { Plan as DbPlan } from '../types/database';
+import { PlanWithMountain } from '../types/plan-utils-types';
 const supabase = createClient();
 
-// 登山計画の型定義
-export interface Plan {
-  id?: string;
-  user_id: string;
-  mountain_id: string;
-  title: string;
-  description?: string;
-  planned_date?: string;
-  planned_start_date?: string;
-  planned_end_date?: string;
-  estimated_duration?: number; // 分単位
-  difficulty_level?: 'easy' | 'moderate' | 'hard';
-  route_plan?: string;
-  transport_mode?: 'car' | 'public' | 'taxi' | 'shuttle' | 'bike' | 'walk' | 'other';
-  equipment_list?: string[];
-  lodging?: string;
-  notes?: string;
-  is_public?: boolean;
-  published_at?: string;
-  created_at?: string;
-  updated_at?: string;
-}
+// re-export type for backwards compatibility
+export type { PlanWithMountain };
 
-export interface PlanWithMountain extends Plan {
-  mountain_name?: string;
-  user?: {
-    id: string;
-    display_name?: string;
-  };
-  like_count?: number;
-}
+// Use DB Plan type for consistency with schema
+export type Plan = DbPlan;
+
 
 /**
  * 公開されている登山計画を取得（like_count含む）
  */
 export async function getPublicPlans(limit: number = 50): Promise<PlanWithMountain[]> {
   try {
-    const { data, error }: { data: any[] | null; error: any } = await supabase
+    const { data, error }: { data: PlanWithMountain[] | null; error: { message?: string } | null } = await supabase
       .from('plans')
       .select(`
         *,
@@ -59,16 +36,33 @@ export async function getPublicPlans(limit: number = 50): Promise<PlanWithMounta
       return [];
     }
 
-    return data.map(plan => ({
-      ...plan,
-      mountain_name: Array.isArray(plan.mountains)
-        ? plan.mountains[0]?.name
-        : plan.mountains?.name || '不明',
-      user: Array.isArray(plan.users)
-        ? plan.users[0]
-        : plan.users,
-      like_count: Array.isArray(plan.plan_favorites) ? plan.plan_favorites[0]?.count || 0 : 0
-    }));
+    return data.map(plan => {
+      // mountains
+      let mountain_name = '不明';
+      if (Array.isArray(plan.mountains)) {
+        mountain_name = plan.mountains[0]?.name ?? '不明';
+      } else if (plan.mountains && typeof plan.mountains === 'object') {
+        mountain_name = plan.mountains.name ?? '不明';
+      }
+      // users
+      let user = undefined;
+      if (Array.isArray(plan.users)) {
+        user = plan.users[0];
+      } else if (plan.users && typeof plan.users === 'object') {
+        user = plan.users;
+      }
+      // like_count
+      let like_count = 0;
+      if (Array.isArray(plan.plan_favorites)) {
+        like_count = plan.plan_favorites[0]?.count ?? 0;
+      }
+      return {
+        ...plan,
+        mountain_name,
+        user,
+        like_count,
+      };
+    });
   } catch (error) {
     console.error('公開登山計画取得例外:', error);
     return [];

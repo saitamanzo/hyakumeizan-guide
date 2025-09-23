@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { updatePlan, Plan } from '@/lib/plan-utils';
 
 interface EditPlanProps {
-  plan: Plan & { mountain_name?: string; transport_mode?: 'car' | 'public' | 'taxi' | 'shuttle' | 'bike' | 'walk' | 'other' };
+  plan: Plan & { mountain_name?: string | null; transport_mode?: 'car' | 'public' | 'taxi' | 'shuttle' | 'bike' | 'walk' | 'other' | null };
   onUpdate: (updatedPlan: Plan) => void;
   onCancel: () => void;
 }

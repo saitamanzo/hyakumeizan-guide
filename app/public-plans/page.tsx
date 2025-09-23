@@ -35,7 +35,7 @@ export default function PublicPlansPage() {
 
   // なし
 
- const getDifficultyBadge = (level?: 'easy' | 'moderate' | 'hard') => {
+ const getDifficultyBadge = (level?: 'easy' | 'moderate' | 'hard' | null) => {
   if (!level) return null;
   const badges: Record<'easy' | 'moderate' | 'hard', string> = {
     easy: 'bg-green-100 text-green-700',

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 // 一時的なデータ挿入スクリプト
 // ※本番環境では使用しない
 
@@ -200,9 +201,10 @@ const sampleRoutes = [
 async function insertSampleData() {
   try {
     console.log('Inserting sample mountains...');
-    const { data: mountains, error: mountainError } = await supabase
+    const { data: _mountains, error: mountainError } = await supabase
       .from('mountains')
       .insert(sampleMountains);
+    void _mountains;
     
     if (mountainError) {
       console.error('Error inserting mountains:', mountainError);
@@ -212,9 +214,10 @@ async function insertSampleData() {
     console.log('Mountains inserted successfully');
     
     console.log('Inserting sample routes...');
-    const { data: routes, error: routeError } = await supabase
+    const { data: _routes, error: routeError } = await supabase
       .from('routes')
       .insert(sampleRoutes);
+    void _routes;
     
     if (routeError) {
       console.error('Error inserting routes:', routeError);

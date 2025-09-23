@@ -123,7 +123,7 @@ export function createPlanInstagramCaption(plan: PlanWithMountain): SocialShareD
   
   if (plan.equipment_list && plan.equipment_list.length > 0) {
     text += `準備する装備:\n`;
-    plan.equipment_list.slice(0, 5).forEach(item => {
+    plan.equipment_list.slice(0, 5).forEach((item: string) => {
       text += `✓ ${item}\n`;
     });
     if (plan.equipment_list.length > 5) {

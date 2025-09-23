@@ -28,7 +28,7 @@ interface PlanData {
   notes: string;
 }
 
-type PlanWithTransport = PlanWithMountain & { transport_mode?: 'car' | 'public' | 'taxi' | 'shuttle' | 'bike' | 'walk' | 'other' };
+type PlanWithTransport = PlanWithMountain & { transport_mode?: 'car' | 'public' | 'taxi' | 'shuttle' | 'bike' | 'walk' | 'other' | null };
 
 export default function ClimbingPlan({ mountainName, mountainId, difficulty, elevation }: ClimbingPlanProps) {
   const { user, loading } = useAuth();
@@ -228,7 +228,7 @@ export default function ClimbingPlan({ mountainName, mountainId, difficulty, ele
           )}
           
           {/* 保存済み計画の表示 */}
-          {user && savedPlans.length > 0 && (
+        {user && savedPlans.length > 0 && (
             <div className="mb-6">
               <h4 className="text-md font-medium text-gray-900 mb-3">過去の登山計画</h4>
               <div className="space-y-4">
@@ -239,7 +239,7 @@ export default function ClimbingPlan({ mountainName, mountainId, difficulty, ele
                         <h5 className="font-medium text-gray-900">{savedPlan.title}</h5>
                         {savedPlan.planned_date && (
                           <p className="text-sm text-gray-600">
-                            予定日: {new Date(savedPlan.planned_date).toLocaleDateString('ja-JP')}
+                            予定日: {new Date(savedPlan.planned_date ?? '').toLocaleDateString('ja-JP')}
                           </p>
                         )}
                       </div>
@@ -291,12 +291,12 @@ export default function ClimbingPlan({ mountainName, mountainId, difficulty, ele
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm text-gray-600 mb-2">
                       {(savedPlan.planned_start_date || savedPlan.planned_end_date) && (
                         <div>
-                          <span className="font-medium">期間:</span> {(savedPlan.planned_start_date || savedPlan.planned_date)?.split('T')[0]} ~ {(savedPlan.planned_end_date || savedPlan.planned_date)?.split('T')[0]}
+                          <span className="font-medium">期間:</span> {(savedPlan.planned_start_date || savedPlan.planned_date)?.split('T')[0] ?? ''} ~ {(savedPlan.planned_end_date || savedPlan.planned_date)?.split('T')[0] ?? ''}
                         </div>
                       )}
                       {savedPlan.estimated_duration && (
                         <div>
-                          <span className="font-medium">予想時間:</span> {Math.round(savedPlan.estimated_duration / 60)}時間
+                          <span className="font-medium">予想時間:</span> {Math.round((savedPlan.estimated_duration ?? 0) / 60)}時間
                         </div>
                       )}
                       <div>
@@ -304,12 +304,12 @@ export default function ClimbingPlan({ mountainName, mountainId, difficulty, ele
                       </div>
                       {savedPlan.transport_mode && (
                         <div>
-                          <span className="font-medium">交通:</span> {savedPlan.transport_mode}
+                          <span className="font-medium">交通:</span> {savedPlan.transport_mode ?? ''}
                         </div>
                       )}
                       {savedPlan.lodging && (
                         <div className="col-span-2">
-                          <span className="font-medium">宿泊:</span> {savedPlan.lodging}
+                          <span className="font-medium">宿泊:</span> {savedPlan.lodging ?? ''}
                         </div>
                       )}
                       {savedPlan.equipment_list && savedPlan.equipment_list.length > 0 && (
