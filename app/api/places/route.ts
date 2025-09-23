@@ -39,10 +39,6 @@ const CATEGORY_QUERIES: Record<string, string> = {
     way(around:RADIUS,LAT,LNG)[cuisine~"soba|そば|蕎麦"];
     relation(around:RADIUS,LAT,LNG)[cuisine~"soba|そば|蕎麦"];
   `,
-  fishing_streams: `
-    way(around:RADIUS,LAT,LNG)[waterway~"stream|river|brook|drain"];
-    relation(around:RADIUS,LAT,LNG)[waterway~"stream|river|brook|drain"];
-  `,
   hotels: `
     node(around:RADIUS,LAT,LNG)[tourism~"hotel|guest_house|hostel|motel"];
     way(around:RADIUS,LAT,LNG)[tourism~"hotel|guest_house|hostel|motel"];
@@ -53,6 +49,17 @@ const CATEGORY_QUERIES: Record<string, string> = {
     node(around:RADIUS,LAT,LNG)[winter_sports];
     way(around:RADIUS,LAT,LNG)[leisure=ski_resort];
     relation(around:RADIUS,LAT,LNG)[leisure=ski_resort];
+  `,
+  camp_sites: `
+    node(around:RADIUS,LAT,LNG)[tourism=camp_site];
+    node(around:RADIUS,LAT,LNG)[leisure=camp_site];
+    node(around:RADIUS,LAT,LNG)[amenity=camp_site];
+    way(around:RADIUS,LAT,LNG)[tourism=camp_site];
+    way(around:RADIUS,LAT,LNG)[leisure=camp_site];
+    way(around:RADIUS,LAT,LNG)[amenity=camp_site];
+    relation(around:RADIUS,LAT,LNG)[tourism=camp_site];
+    relation(around:RADIUS,LAT,LNG)[leisure=camp_site];
+    relation(around:RADIUS,LAT,LNG)[amenity=camp_site];
   `,
   attractions: `
     node(around:RADIUS,LAT,LNG)[tourism~"attraction|museum|viewpoint|theme_park|zoo|gallery"];
@@ -84,7 +91,8 @@ async function queryOverpassCategory(categoryKey: string, lat: string, lng: stri
     return (await res.json()) as OverpassResponse
   } catch (e) {
     try {
-      console.error('Overpass fetch error for category', categoryKey, 'err', e?.message ?? String(e))
+      const msg = e instanceof Error ? e.message : String(e)
+      console.error('Overpass fetch error for category', categoryKey, 'err', msg)
     } catch {}
     return { elements: [] } as OverpassResponse
   }
@@ -180,7 +188,8 @@ async function fetchWikimediaThumbnail(identifier: string): Promise<string | und
       }
     } catch (err) {
       try {
-        console.error('Wikimedia fetch error for imageinfo', title, err?.message ?? String(err))
+        const msg = err instanceof Error ? err.message : String(err)
+        console.error('Wikimedia fetch error for imageinfo', title, msg)
       } catch {}
     }
     return undefined
@@ -206,7 +215,8 @@ async function fetchWikimediaThumbnail(identifier: string): Promise<string | und
       }
     } catch (err) {
       try {
-        console.error('Wikimedia fetch error for category', catName, err?.message ?? String(err))
+        const msg = err instanceof Error ? err.message : String(err)
+        console.error('Wikimedia fetch error for category', catName, msg)
       } catch {}
     }
     return undefined
@@ -296,7 +306,8 @@ async function groupByCategory(overpassData: OverpassResponse, centerLat: number
           if (thumb) image = thumb
         } catch (err) {
           try {
-            console.error('Error fetching thumbnail for candidate', candidate, err?.message ?? String(err))
+            const msg = err instanceof Error ? err.message : String(err)
+            console.error('Error fetching thumbnail for candidate', candidate, msg)
           } catch {}
         }
       }
@@ -309,9 +320,32 @@ async function groupByCategory(overpassData: OverpassResponse, centerLat: number
       out.hot_springs.push(enriched)
       continue
     }
+    if (el.tags.tourism === 'camp_site' || el.tags.leisure === 'camp_site' || el.tags.amenity === 'camp_site' || /camp[_ ]?site/i.test(JSON.stringify(el.tags))) {
+      out.camp_sites = out.camp_sites || []
+      out.camp_sites.push(enriched)
+      continue
+    }
     if ((el.tags.cuisine && /soba|そば|蕎麦/i.test(el.tags.cuisine)) || (el.tags.name && /そば|蕎麦|soba/i.test(el.tags.name))) {
       out.soba_restaurants = out.soba_restaurants || []
       out.soba_restaurants.push(enriched)
+      continue
+    }
+    // 名前に「小屋」を含む場合は宿泊施設（山小屋など）として扱う
+    if (el.tags.name && /小屋/.test(String(el.tags.name))) {
+      out.hotels = out.hotels || []
+      out.hotels.push(enriched)
+      continue
+    }
+    // 名前に「茶屋」を含む場合は食堂／レストランとして扱う
+    if (el.tags.name && /茶屋/.test(String(el.tags.name))) {
+      out.restaurants = out.restaurants || []
+      out.restaurants.push(enriched)
+      continue
+    }
+    // 名前に「山荘」を含む場合は観光地ではなく宿泊施設として扱う
+    if (el.tags.name && /山荘/.test(String(el.tags.name))) {
+      out.hotels = out.hotels || []
+      out.hotels.push(enriched)
       continue
     }
     if (el.tags.tourism && /hotel|guest_house|hostel|motel/i.test(el.tags.tourism)) {

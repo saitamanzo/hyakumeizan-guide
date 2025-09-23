@@ -1,0 +1,204 @@
+ ⚠ Warning: Found multiple lockfiles. Selecting /Users/akira2/package-lock.json.
+   Consider removing the lockfiles at:
+   * /Users/akira2/projects/hyakumeizan-guide/package-lock.json
+
+   ▲ Next.js 15.4.5 (Turbopack)
+   - Local:        http://localhost:3000
+   - Network:      http://172.20.10.2:3000
+   - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Compiled middleware in 266ms
+ ✓ Ready in 1510ms
+ ○ Compiling /api/places ...
+ ✓ Compiled /api/places in 1183ms
+Overpass API returned non-ok for category attractions status 429
+ ○ Compiling /mountains ...
+Overpass API returned non-ok for category day_hot_springs status 400
+ ✓ Compiled /mountains in 4.3s
+MountainsPage: getMountains開始
+MountainsPage: getMountains開始
+MountainsPage: getMountains成功 - 100 件
+ GET /mountains 200 in 578ms
+MountainsPage: getMountains成功 - 100 件
+ GET /mountains 200 in 5293ms
+ ✓ Compiled /api/image in 204ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL010X1NoYXJpXzYuSlBHP3dpZHRoPTY0MA== 200 in 1594ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL010X1Jpc2hpcmkoMjAwNCkuanBnP3dpZHRoPTY0MA== 200 in 1656ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL0RhaXNldHN1MDAwMS5qcGc/d2lkdGg9NjQw 200 in 1817ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL01vdW50X01lYWthbjAxczEwLmpwZz93aWR0aD02NDA= 200 in 1832ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL1RvbXVyYXVzaGlfZnJvbV9jaHV1YmV0c3VkYWtlXzIwMDYtOC0yNS5qcGc/d2lkdGg9NjQw 200 in 1869ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL1JhdXN1LWRha2VfMDIuSlBHP3dpZHRoPTY0MA== 200 in 1956ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL1lvdGVpLXphbi1mcm9tLWhpcmFmdS5qcGc/d2lkdGg9NjQw 200 in 691ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL01vdW50X1Rva2FjaGlfZnJvbV9Nb3VudF9CaWVpXzE5OTgtOC05LmpwZz93aWR0aD02NDA= 200 in 782ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL0hha2tvZGFzYW5fc2Vlbl9mcm9tX3RoZV9ub3J0aHdlc3QuanBnP3dpZHRoPTY0MA== 200 in 757ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL010LlBvcm9zaGlyaWRha2VfZnJvbV9NdC5Ub3R0YWJldHN1ZGFrZS5qcGc/d2lkdGg9NjQw 200 in 805ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL010X0l3YWtpX2FuZF9OYW5vaGFuYV9BamlnYXNhd2FfQW9tb3JpX0pwX1A1MTExMjAyLmpwZz93aWR0aD02NDA= 200 in 800ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL0hhY2hpbWFubl9udW1hXzIwMDguanBnP3dpZHRoPTY0MA== 200 in 734ms
+ ○ Compiling /mountains/[id] ...
+ ✓ Compiled /mountains/[id] in 951ms
+ GET /mountains/284eebf2-8be4-40d0-b76d-2b00ca591f55 200 in 2174ms
+ GET /mountains/284eebf2-8be4-40d0-b76d-2b00ca591f55 200 in 557ms
+ ✓ Compiled /api/elevation in 341ms
+ GET /api/elevation?lat=44.0757&lng=145.1222 200 in 746ms
+ GET /api/elevation?lat=44.0757&lng=145.1222 200 in 134ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL1JhdXN1LWRha2VfMDIuSlBHP3dpZHRoPTEyMDA 200 in 1678ms
+Overpass API returned non-ok for category attractions status 504
+Overpass API returned non-ok for category day_hot_springs status 400
+ GET /api/places?lat=44.0757&lng=145.1222&radius=20000 200 in 23913ms
+ GET /api/places?lat=44.0757&lng=145.1222&radius=20000 200 in 3919ms
+ GET /api/places?lat=35.3606&lng=138.7274&radius=200000 200 in 181179ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL01vdW50X01lYWthbjAxczEwLmpwZz93aWR0aD02NDA= 200 in 2574ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL1RvbXVyYXVzaGlfZnJvbV9jaHV1YmV0c3VkYWtlXzIwMDYtOC0yNS5qcGc/d2lkdGg9NjQw 200 in 2576ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL0RhaXNldHN1MDAwMS5qcGc/d2lkdGg9NjQw 200 in 2749ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL010X1NoYXJpXzYuSlBHP3dpZHRoPTY0MA== 200 in 3144ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL1JhdXN1LWRha2VfMDIuSlBHP3dpZHRoPTY0MA== 200 in 3143ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL010X1Jpc2hpcmkoMjAwNCkuanBnP3dpZHRoPTY0MA== 200 in 3260ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL1lvdGVpLXphbi1mcm9tLWhpcmFmdS5qcGc/d2lkdGg9NjQw 200 in 718ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL01vdW50X1Rva2FjaGlfZnJvbV9Nb3VudF9CaWVpXzE5OTgtOC05LmpwZz93aWR0aD02NDA= 200 in 728ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL010LlBvcm9zaGlyaWRha2VfZnJvbV9NdC5Ub3R0YWJldHN1ZGFrZS5qcGc/d2lkdGg9NjQw 200 in 997ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL0hhY2hpbWFubl9udW1hXzIwMDguanBnP3dpZHRoPTY0MA== 200 in 405ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL0hha2tvZGFzYW5fc2Vlbl9mcm9tX3RoZV9ub3J0aHdlc3QuanBnP3dpZHRoPTY0MA== 200 in 659ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL010X0l3YWtpX2FuZF9OYW5vaGFuYV9BamlnYXNhd2FfQW9tb3JpX0pwX1A1MTExMjAyLmpwZz93aWR0aD02NDA= 200 in 587ms
+ GET /mountains/5b170145-ef03-449e-86c7-b005a1b8b0d5 200 in 1027ms
+ GET /api/elevation?lat=40.6403&lng=140.2986 200 in 408ms
+ GET /api/elevation?lat=40.6403&lng=140.2986 200 in 143ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL010X0l3YWtpX2FuZF9OYW5vaGFuYV9BamlnYXNhd2FfQW9tb3JpX0pwX1A1MTExMjAyLmpwZz93aWR0aD0xMjAw 200 in 1956ms
+Overpass API returned non-ok for category day_hot_springs status 400
+ GET /api/places?lat=40.6403&lng=140.2986&radius=20000 200 in 20091ms
+ GET /api/places?lat=40.6403&lng=140.2986&radius=20000 200 in 271ms
+MountainsPage: getMountains開始
+MountainsPage: getMountains成功 - 100 件
+ GET /mountains 200 in 976ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL010X1NoYXJpXzYuSlBHP3dpZHRoPTY0MA== 200 in 1315ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL010X1Jpc2hpcmkoMjAwNCkuanBnP3dpZHRoPTY0MA== 200 in 1316ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL1JhdXN1LWRha2VfMDIuSlBHP3dpZHRoPTY0MA== 200 in 1316ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL0hhY2hpbWFubl9udW1hXzIwMDguanBnP3dpZHRoPTY0MA== 200 in 1607ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL010X0l3YWtpX2FuZF9OYW5vaGFuYV9BamlnYXNhd2FfQW9tb3JpX0pwX1A1MTExMjAyLmpwZz93aWR0aD02NDA= 200 in 1610ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL0hha2tvZGFzYW5fc2Vlbl9mcm9tX3RoZV9ub3J0aHdlc3QuanBnP3dpZHRoPTY0MA== 200 in 1621ms
+ GET /mountains/db642f5c-85c4-49de-a768-bf38f9fa4ad0 200 in 635ms
+ GET /api/elevation?lat=45.1788&lng=141.2433 200 in 389ms
+ GET /api/elevation?lat=45.1788&lng=141.2433 200 in 134ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL010X1Jpc2hpcmkoMjAwNCkuanBnP3dpZHRoPTEyMDA 200 in 1005ms
+Overpass API returned non-ok for category day_hot_springs status 400
+ GET /api/places?lat=45.1788&lng=141.2433&radius=20000 200 in 17286ms
+ GET /api/places?lat=45.1788&lng=141.2433&radius=20000 200 in 1111ms
+MountainsPage: getMountains開始
+MountainsPage: getMountains成功 - 100 件
+ GET /mountains 200 in 1070ms
+ ○ Compiling /_error ...
+ ✓ Compiled /_error in 1336ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL01vdW50X01lYWthbjAxczEwLmpwZz93aWR0aD02NDA= 500 in 1624ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL1JhdXN1LWRha2VfMDIuSlBHP3dpZHRoPTY0MA== 500 in 1655ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL0RhaXNldHN1MDAwMS5qcGc/d2lkdGg9NjQw 500 in 1697ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL010X1NoYXJpXzYuSlBHP3dpZHRoPTY0MA== 500 in 1703ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL010X1Jpc2hpcmkoMjAwNCkuanBnP3dpZHRoPTY0MA== 500 in 1705ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL1RvbXVyYXVzaGlfZnJvbV9jaHV1YmV0c3VkYWtlXzIwMDYtOC0yNS5qcGc/d2lkdGg9NjQw 500 in 1698ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL01vdW50X1Rva2FjaGlfZnJvbV9Nb3VudF9CaWVpXzE5OTgtOC05LmpwZz93aWR0aD02NDA= 500 in 192ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL1lvdGVpLXphbi1mcm9tLWhpcmFmdS5qcGc/d2lkdGg9NjQw 500 in 142ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL010LlBvcm9zaGlyaWRha2VfZnJvbV9NdC5Ub3R0YWJldHN1ZGFrZS5qcGc/d2lkdGg9NjQw 500 in 156ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL0hhY2hpbWFubl9udW1hXzIwMDguanBnP3dpZHRoPTY0MA== 500 in 166ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL0hha2tvZGFzYW5fc2Vlbl9mcm9tX3RoZV9ub3J0aHdlc3QuanBnP3dpZHRoPTY0MA== 500 in 179ms
+ GET /api/image?u=aHR0cHM6Ly9jb21tb25zLndpa2ltZWRpYS5vcmcvd2lraS9TcGVjaWFsOkZpbGVQYXRoL010X0l3YWtpX2FuZF9OYW5vaGFuYV9BamlnYXNhd2FfQW9tb3JpX0pwX1A1MTExMjAyLmpwZz93aWR0aD02NDA= 500 in 190ms
+ ⨯ ./components/NearbyPlaces.tsx:44:9
+Parsing ecmascript source code failed
+[0m [90m 42 |[39m         [36mif[39m ([33m![39mmounted) [36mreturn[39m
+ [90m 43 |[39m         [32m"use client"[39m
+[31m[1m>[22m[39m[90m 44 |[39m         [36mimport[39m [33mReact[39m[33m,[39m { useEffect[33m,[39m useState } [36mfrom[39m [32m'react'[39m
+ [90m    |[39m         [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 45 |[39m         [36mimport[39m {
+ [90m 46 |[39m           [33mFireIcon[39m[33m,[39m
+ [90m 47 |[39m           [33mSparklesIcon[39m[33m,[39m[0m
+
+'import', and 'export' cannot be used outside of module code
+
+Import trace:
+  ./components/NearbyPlaces.tsx
+  ./app/mountains/[id]/page.tsx
+
+
+ GET /mountains/1505036e-49a8-48b9-bada-cb0bce780cc2 500 in 618ms
+ ⨯ ./components/NearbyPlaces.tsx:44:9
+Parsing ecmascript source code failed
+[0m [90m 42 |[39m         [36mif[39m ([33m![39mmounted) [36mreturn[39m
+ [90m 43 |[39m         [32m"use client"[39m
+[31m[1m>[22m[39m[90m 44 |[39m         [36mimport[39m [33mReact[39m[33m,[39m { useEffect[33m,[39m useState } [36mfrom[39m [32m'react'[39m
+ [90m    |[39m         [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 45 |[39m         [36mimport[39m {
+ [90m 46 |[39m           [33mFireIcon[39m[33m,[39m
+ [90m 47 |[39m           [33mSparklesIcon[39m[33m,[39m[0m
+
+'import', and 'export' cannot be used outside of module code
+
+Import trace:
+  ./components/NearbyPlaces.tsx
+  ./app/mountains/[id]/page.tsx
+
+
+ GET /mountains/1505036e-49a8-48b9-bada-cb0bce780cc2 500 in 335ms
+ ⨯ ./app/api/places/route.ts:131:5
+Parsing ecmascript source code failed
+[0m [90m 129 |[39m     [36mconst[39m categories [33m=[39m [33mObject[39m[33m.[39mkeys([33mCATEGORY_QUERIES[39m)
+ [90m 130 |[39m     [36mconst[39m allElements[33m:[39m [33mOverpassElement[39m[] [33m=[39m []
+[31m[1m>[22m[39m[90m 131 |[39m     [36mimport[39m { createClient [36mas[39m createSupabaseClient } [36mfrom[39m [32m'@/lib/supabase/server'[39m
+ [90m     |[39m     [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 132 |[39m     type [33mPlace[39m [33m=[39m {
+ [90m 133 |[39m       id[33m:[39m string
+ [90m 134 |[39m       name[33m?[39m[33m:[39m string[0m
+
+'import', and 'export' cannot be used outside of module code
+
+
+ GET /api/places?lat=35.3606&lng=138.7274&radius=200000 500 in 107ms
+ ⨯ ./app/api/places/route.ts:131:5
+Parsing ecmascript source code failed
+[0m [90m 129 |[39m     [36mconst[39m categories [33m=[39m [33mObject[39m[33m.[39mkeys([33mCATEGORY_QUERIES[39m)
+ [90m 130 |[39m     [36mconst[39m allElements[33m:[39m [33mOverpassElement[39m[] [33m=[39m []
+[31m[1m>[22m[39m[90m 131 |[39m     [36mimport[39m { createClient [36mas[39m createSupabaseClient } [36mfrom[39m [32m'@/lib/supabase/server'[39m
+ [90m     |[39m     [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 132 |[39m     type [33mPlace[39m [33m=[39m {
+ [90m 133 |[39m       id[33m:[39m string
+ [90m 134 |[39m       name[33m?[39m[33m:[39m string[0m
+
+'import', and 'export' cannot be used outside of module code
+
+
+ GET /api/places?lat=35.3606&lng=138.7274&radius=200000 500 in 55ms
+ ⨯ ./components/NearbyPlaces.tsx:44:9
+Parsing ecmascript source code failed
+[0m [90m 42 |[39m         [36mif[39m ([33m![39mmounted) [36mreturn[39m
+ [90m 43 |[39m         [32m"use client"[39m
+[31m[1m>[22m[39m[90m 44 |[39m         [36mimport[39m [33mReact[39m[33m,[39m { useEffect[33m,[39m useState } [36mfrom[39m [32m'react'[39m
+ [90m    |[39m         [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 45 |[39m         [36mimport[39m {
+ [90m 46 |[39m           [33mFireIcon[39m[33m,[39m
+ [90m 47 |[39m           [33mSparklesIcon[39m[33m,[39m[0m
+
+'import', and 'export' cannot be used outside of module code
+
+Import trace:
+  ./components/NearbyPlaces.tsx
+  ./app/mountains/[id]/page.tsx
+
+
+ GET /mountains/1505036e-49a8-48b9-bada-cb0bce780cc2 500 in 85ms
+ ⨯ ./components/NearbyPlaces.tsx:44:9
+Parsing ecmascript source code failed
+[0m [90m 42 |[39m         [36mif[39m ([33m![39mmounted) [36mreturn[39m
+ [90m 43 |[39m         [32m"use client"[39m
+[31m[1m>[22m[39m[90m 44 |[39m         [36mimport[39m [33mReact[39m[33m,[39m { useEffect[33m,[39m useState } [36mfrom[39m [32m'react'[39m
+ [90m    |[39m         [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 45 |[39m         [36mimport[39m {
+ [90m 46 |[39m           [33mFireIcon[39m[33m,[39m
+ [90m 47 |[39m           [33mSparklesIcon[39m[33m,[39m[0m
+
+'import', and 'export' cannot be used outside of module code
+
+Import trace:
+  ./components/NearbyPlaces.tsx
+  ./app/mountains/[id]/page.tsx
+
+
+ GET /mountains/1505036e-49a8-48b9-bada-cb0bce780cc2 500 in 83ms
+ ✓ Compiled in 166ms
+ ✓ Compiled in 799ms

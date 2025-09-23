@@ -21,6 +21,7 @@ import ClimbingPlan from '@/components/ClimbingPlan';
 import ClimbRecord from '@/components/ClimbRecord';
 import { WeatherMapIntegration, ImageGalleryWrapper } from '@/components/MountainClientComponents';
 import NearbyPlaces from '@/components/NearbyPlaces';
+import NearbyNews from '@/components/NearbyNews';
 
 export default async function MountainPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -170,8 +171,13 @@ export default async function MountainPage({ params }: { params: Promise<{ id: s
             />
           </div>
 
-          {/* 近郊スポット */}
-          <div className="mt-6">
+          {/* 関連ニュース（山名・地域・熊出没等） */}
+          <div className="mt-8">
+            <NearbyNews name={mountain.name} area={mountain.prefecture || ''} />
+          </div>
+
+          {/* 近隣スポット */}
+          <div className="mt-8">
             <NearbyPlaces lat={latitude} lng={longitude} radius={20000} />
           </div>
 
