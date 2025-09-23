@@ -41,7 +41,29 @@ export default function NearbyPlaces({ lat, lng, radius = 20000 }: { lat: number
     return () => { mounted = false }
   }, [lat, lng, radius])
 
-  if (loading) return <div className="p-4">近隣スポットを読み込み中…</div>
+  if (loading) return (
+    <div className="mt-8">
+      <h2 className="text-xl font-bold mb-3">近郊スポット</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="bg-white shadow-sm rounded-lg p-4 animate-pulse">
+            <div className="h-4 bg-gray-200 rounded w-1/3 mb-3" />
+            <ul className="space-y-3">
+              {Array.from({ length: 3 }).map((_, j) => (
+                <li key={j} className="flex items-start gap-3">
+                  <div className="w-16 h-16 rounded bg-gray-200" />
+                  <div className="flex-1">
+                    <div className="h-4 bg-gray-200 rounded w-2/3 mb-2" />
+                    <div className="h-3 bg-gray-200 rounded w-1/2" />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
   if (error) return <div className="p-4 text-red-600">エラー: {error}</div>
   if (!data) return <div className="p-4 text-gray-500">近隣スポットは見つかりませんでした。</div>
 
