@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { gzipSync, gunzipSync } from 'zlib'
 
 type Place = {
   id: string
@@ -69,6 +70,8 @@ const CATEGORY_QUERIES: Record<string, string> = {
 // Simple in-memory cache for Overpass combined responses
 const overpassCache = new Map<string, { ts: number, data: OverpassResponse }>()
 const CACHE_TTL = 1000 * 60 * 10 // 10 minutes
+// in-process locks to avoid duplicate Overpass fetches within same Node process
+const localLocks = new Set<string>()
 
 // Perform query per category to allow rate control and smaller responses
 async function queryOverpassCategory(categoryKey: string, lat: string, lng: string, radius = '20000') {
@@ -95,48 +98,349 @@ async function cachedQueryOverpass(lat: string, lng: string, radius = '20000') {
   const hit = overpassCache.get(key)
   if (hit && (now - hit.ts) < CACHE_TTL) return hit.data
 
-  const categories = Object.keys(CATEGORY_QUERIES)
-  const allElements: OverpassElement[] = []
-  for (const cat of categories) {
-    // throttle between requests to be polite to Overpass
-    const resp = await queryOverpassCategory(cat, lat, lng, radius)
-    if (Array.isArray(resp.elements)) allElements.push(...resp.elements)
-    // small delay (200ms) between category requests
-    await new Promise((r) => setTimeout(r, 200))
+  // Try Redis for cached combined response if available (optional)
+  const redis = await ensureRedis()
+  const redisOverpassKey = `${REDIS_KEY_PREFIX}overpass:${key}`
+  const redisTtl = Number(process.env.REDIS_OVERPASS_TTL_MS || String(CACHE_TTL))
+  if (redis) {
+    try {
+      const raw = await redis.get(redisOverpassKey)
+      if (raw) {
+        try {
+          let parsed: OverpassResponse
+          if (raw.startsWith('GZ:')) {
+            const b = Buffer.from(raw.slice(3), 'base64')
+            const json = gunzipSync(b).toString('utf8')
+            parsed = JSON.parse(json) as OverpassResponse
+          } else {
+            parsed = JSON.parse(raw) as OverpassResponse
+          }
+          // update in-memory cache for faster subsequent access
+          overpassCache.set(key, { ts: now, data: parsed })
+          try { if (typeof redis.incr === 'function') await redis.incr(`${REDIS_KEY_PREFIX}metrics:overpass:cache_hits`) } catch {}
+          return parsed
+        } catch {
+          // ignore parse errors and fallthrough to fetch
+        }
+      } else {
+        try { if (typeof redis.incr === 'function') await redis.incr(`${REDIS_KEY_PREFIX}metrics:overpass:cache_misses`) } catch {}
+      }
+    } catch {
+      // ignore redis read errors and continue with in-memory fetch
+    }
   }
-  const combined: OverpassResponse = { elements: allElements }
-  overpassCache.set(key, { ts: now, data: combined })
-  return combined
+
+  // in-process locks to avoid duplicate Overpass fetches within same Node process
+  const localLockKey = `olock:${key}`
+  const lockWaitMs = Number(process.env.OVERPASS_LOCAL_LOCK_WAIT_MS || '10000')
+  const waitUntil = Date.now() + lockWaitMs
+  if (localLocks.has(localLockKey)) {
+    // wait for other in-process worker to finish and populate cache
+    while (Date.now() < waitUntil) {
+      await new Promise(r => setTimeout(r, 200))
+      const cachedNow = overpassCache.get(key)
+      if (cachedNow && (Date.now() - cachedNow.ts) < CACHE_TTL) return cachedNow.data
+      if (redis) {
+        try {
+          const raw2 = await redis.get(redisOverpassKey)
+          if (raw2) {
+            try {
+              let parsed2: OverpassResponse
+              if (raw2.startsWith('GZ:')) {
+                const b2 = Buffer.from(raw2.slice(3), 'base64')
+                const json2 = gunzipSync(b2).toString('utf8')
+                parsed2 = JSON.parse(json2) as OverpassResponse
+              } else {
+                parsed2 = JSON.parse(raw2) as OverpassResponse
+              }
+              overpassCache.set(key, { ts: now, data: parsed2 })
+              try { if (typeof redis.incr === 'function') await redis.incr(`${REDIS_KEY_PREFIX}metrics:overpass:cache_hits`) } catch {}
+              return parsed2
+            } catch {}
+          }
+        } catch {}
+      }
+    }
+    // timeout expired — fall through and perform fetch
+  }
+
+  // acquire local lock
+  localLocks.add(localLockKey)
+  // try distributed lock using Redlock if available, otherwise best-effort NX
+  let distLockAcquired = false
+  let redlockLock: { unlock?: () => Promise<void>; } | null = null
+  if (redis) {
+    const g = globalThis as unknown as { __redlock?: unknown }
+    if (g.__redlock) {
+      try {
+        const redlock = g.__redlock as unknown as { lock(resource: string, ttl: number): Promise<{ unlock(): Promise<void> }> }
+        const lockTtl = Number(process.env.REDIS_OVERPASS_LOCK_TTL_MS || '10000')
+        const resource = `${REDIS_KEY_PREFIX}lock:overpass:${key}`
+        const acquired = await redlock.lock(resource, lockTtl)
+        redlockLock = acquired
+        distLockAcquired = true
+      } catch {
+        // failed to acquire redlock, will fallback
+      }
+    }
+    if (!distLockAcquired) {
+      try {
+        const distLockKey = `${REDIS_KEY_PREFIX}lock:overpass:${key}`
+        const lockTtl = Number(process.env.REDIS_OVERPASS_LOCK_TTL_MS || '10000')
+        try {
+          const redisAny = redis as unknown as { set?: (...args: unknown[]) => unknown }
+          try {
+            const setRes = await (redisAny.set ? (redisAny.set(distLockKey, '1', 'PX', lockTtl, 'NX') as Promise<unknown>) : undefined)
+            distLockAcquired = !!setRes
+          } catch {
+            // ignore
+          }
+        } catch {
+          // ignore
+        }
+      } catch {}
+    }
+  }
+
+  try {
+    const categories = Object.keys(CATEGORY_QUERIES)
+    const allElements: OverpassElement[] = []
+    for (const cat of categories) {
+      const resp = await queryOverpassCategory(cat, lat, lng, radius)
+      if (Array.isArray(resp.elements)) allElements.push(...resp.elements)
+      await new Promise((r) => setTimeout(r, 200))
+    }
+    const combined: OverpassResponse = { elements: allElements }
+    overpassCache.set(key, { ts: now, data: combined })
+    // persist to Redis (best-effort) with gzip+base64 prefix
+    if (redis) {
+      try {
+        const json = JSON.stringify(combined)
+        const gz = gzipSync(Buffer.from(json, 'utf8'))
+        const payload = `GZ:${gz.toString('base64')}`
+        await redis.set(redisOverpassKey, payload, 'PX', redisTtl)
+      } catch {
+        // ignore
+      }
+    }
+    return combined
+  } finally {
+    // release dist lock if we acquired
+    try {
+      if (redlockLock && typeof redlockLock.unlock === 'function') {
+        try { await redlockLock.unlock() } catch {}
+      } else if (distLockAcquired && redis) {
+        try {
+          const delKey = `${REDIS_KEY_PREFIX}lock:overpass:${key}`
+          if (typeof (redis as unknown as { del?: unknown }).del === 'function') {
+            try { await (redis as unknown as { del?: (k: string) => Promise<number> }).del!(delKey) } catch {}
+          }
+        } catch {}
+      }
+    } catch {}
+    // release local lock
+    try { localLocks.delete(localLockKey) } catch {}
+  }
 }
 
 interface RedisLike {
   get(key: string): Promise<string | null>
   set(key: string, value: string, mode?: string, duration?: number): Promise<string | null>
+  incr?(key: string): Promise<number>
+  // optional helper for passing non-standard SET args (e.g. NX)
+  setWithOptions?(...args: unknown[]): Promise<unknown>
+  del?(key: string): Promise<number>
 }
 
 let redisClient: RedisLike | null = null
 const REDIS_URL = process.env.REDIS_URL
-if (REDIS_URL) {
-  (async () => {
-    try {
-      const mod = await import('ioredis') as unknown
-  const modTyped = mod as unknown as { default?: unknown }
-  const Candidate = (modTyped.default ?? mod) as unknown
-  const Constructor = Candidate as { new(...args: unknown[]): RedisLike }
-  // instantiate Redis client
-  redisClient = new Constructor(REDIS_URL)
-    } catch {
-      redisClient = null
+const REDIS_KEY_PREFIX = process.env.REDIS_KEY_PREFIX || 'hyakumeizan:'
+async function ensureRedis() {
+  if (!REDIS_URL) return null
+  // reuse singleton across module reloads
+  const g = globalThis as unknown as { __redisClient?: unknown }
+  if (g.__redisClient) {
+    redisClient = g.__redisClient as unknown as RedisLike
+    return redisClient
+  }
+  try {
+    // dynamic import optional dependency
+    const mod = await import('ioredis')
+    const IORedis = (mod as unknown as { default?: unknown }).default ?? mod
+    const opts = {
+      maxRetriesPerRequest: Number(process.env.REDIS_MAX_RETRIES || '10'),
+      enableReadyCheck: true,
+      lazyConnect: false,
+      connectTimeout: Number(process.env.REDIS_CONNECT_TIMEOUT_MS || '5000'),
+      // exponential retryStrategy in ms (attempt -> delay)
+      retryStrategy: (times: number) => Math.min(100 * Math.pow(2, times), 10000),
+      // reconnectOnError example
+      reconnectOnError: (err: Error) => {
+        return /ECONNRESET|EPIPE|ETIMEDOUT|ECONNREFUSED/.test(String(err))
+      },
     }
-  })()
+  const ClientConstructor = IORedis as unknown as { new(url: string, opts?: unknown): unknown }
+  const client = new ClientConstructor(REDIS_URL, opts) as unknown
+  const clientAny = client as unknown as { on?: (...args: unknown[]) => void }
+    // attach a small wrapper to allow set with extra args through our typed RedisLike
+    try {
+      const clientWithSet = client as unknown as { set?: (...args: unknown[]) => unknown }
+      try {
+  ;(clientAny as unknown as { setWithOptions?: (...args: unknown[]) => unknown }).setWithOptions = (...args: unknown[]) => (clientWithSet.set ? (clientWithSet.set(...args) as unknown) : undefined)
+      } catch {
+        // ignore
+      }
+    } catch {
+      // ignore
+    }
+    try {
+      if (typeof clientAny.on === 'function') {
+            clientAny.on('error', (err: unknown) => {
+              console.warn('redis error', err)
+              const gm = globalThis as unknown as { __redisMetrics?: { errors: number, connects: number } }
+              gm.__redisMetrics = gm.__redisMetrics || { errors: 0, connects: 0 }
+              gm.__redisMetrics.errors += 1
+            })
+            clientAny.on('connect', () => {
+              const gm = globalThis as unknown as { __redisMetrics?: { errors: number, connects: number } }
+              gm.__redisMetrics = gm.__redisMetrics || { errors: 0, connects: 0 }
+              gm.__redisMetrics.connects += 1
+            })
+            clientAny.on('ready', () => { /* ready */ })
+      }
+    } catch {
+      // ignore
+    }
+  // store singleton
+  g.__redisClient = clientAny
+  redisClient = clientAny as unknown as RedisLike
+  // initialize redlock (best-effort)
+  try {
+    const rmod = await import('redlock')
+    const Redlock = (rmod as unknown as { default?: unknown }).default ?? (rmod as unknown)
+    const RedlockCtor = Redlock as unknown as { new(clients: unknown[], opts?: unknown): unknown }
+    const redlock = new RedlockCtor([client as unknown], { retryCount: Number(process.env.REDLOCK_RETRY || '3') })
+    ;(globalThis as unknown as { __redlock?: unknown }).__redlock = redlock
+  } catch {
+    // ignore if redlock not available
+  }
+  return redisClient
+  } catch {
+    redisClient = null
+    return null
+  }
 }
+
+// Helper: attempt to flush selected Redis metrics to Pushgateway or StatsD (best-effort)
+async function flushMetricsIfDue(redis: RedisLike | null) {
+  if (!redis) return
+  const PUSH_URL = process.env.PUSHGATEWAY_URL
+  const STATSD_HOST = process.env.STATSD_HOST
+  const FLUSH_INTERVAL = Number(process.env.METRICS_FLUSH_INTERVAL_MS || '60000')
+  const g = globalThis as unknown as { __metricsLastFlush?: number, __metricsFlushRunning?: boolean }
+  const now = Date.now()
+  if (g.__metricsFlushRunning) return
+  if (g.__metricsLastFlush && (now - g.__metricsLastFlush) < FLUSH_INTERVAL) return
+  g.__metricsFlushRunning = true
+  try {
+    const keys = [
+      `${REDIS_KEY_PREFIX}metrics:overpass:cache_hits`,
+      `${REDIS_KEY_PREFIX}metrics:overpass:cache_misses`,
+      `${REDIS_KEY_PREFIX}metrics:thumbnail:cache_hits`,
+      `${REDIS_KEY_PREFIX}metrics:thumbnail:cache_misses`,
+    ]
+    const pairs: Record<string, number> = {}
+    for (const k of keys) {
+      try {
+        const v = await redis.get(k)
+        pairs[k] = Number(v || '0')
+      } catch {
+        pairs[k] = 0
+      }
+    }
+
+    // Prepare Prometheus text format with labels
+    const job = 'places'
+    const instance = process.env.INSTANCE_ID || process.env.HOSTNAME || 'unknown'
+    const labelStr = `{job="${job}",instance="${instance}"}`
+    let body = ''
+    const v1 = pairs[`${REDIS_KEY_PREFIX}metrics:overpass:cache_hits`] || pairs['metrics:overpass:cache_hits'] || 0
+    const v2 = pairs[`${REDIS_KEY_PREFIX}metrics:overpass:cache_misses`] || pairs['metrics:overpass:cache_misses'] || 0
+    const v3 = pairs[`${REDIS_KEY_PREFIX}metrics:thumbnail:cache_hits`] || pairs['metrics:thumbnail:cache_hits'] || 0
+    const v4 = pairs[`${REDIS_KEY_PREFIX}metrics:thumbnail:cache_misses`] || pairs['metrics:thumbnail:cache_misses'] || 0
+    body += `# TYPE overpass_cache_hits counter\n` + `overpass_cache_hits${labelStr} ${v1}\n`
+    body += `# TYPE overpass_cache_misses counter\n` + `overpass_cache_misses${labelStr} ${v2}\n`
+    body += `# TYPE thumbnail_cache_hits counter\n` + `thumbnail_cache_hits${labelStr} ${v3}\n`
+    body += `# TYPE thumbnail_cache_misses counter\n` + `thumbnail_cache_misses${labelStr} ${v4}\n`
+
+    if (PUSH_URL) {
+      // Pushgateway prefers a path like: /metrics/job/<job>/instance/<instance>
+      const pushPath = PUSH_URL.replace(/\/+$/, '') + `/metrics/job/${encodeURIComponent(job)}/instance/${encodeURIComponent(instance)}`
+      try { await fetch(pushPath, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body }) } catch {}
+    }
+
+    if (STATSD_HOST) {
+      try {
+        const client = await ensureStatsD()
+        if (client) {
+          try {
+            client.increment('overpass_cache_hits', pairs[`${REDIS_KEY_PREFIX}metrics:overpass:cache_hits`] || pairs['metrics:overpass:cache_hits'] || 0)
+            client.increment('overpass_cache_misses', pairs[`${REDIS_KEY_PREFIX}metrics:overpass:cache_misses`] || pairs['metrics:overpass:cache_misses'] || 0)
+            client.increment('thumbnail_cache_hits', pairs[`${REDIS_KEY_PREFIX}metrics:thumbnail:cache_hits`] || pairs['metrics:thumbnail:cache_hits'] || 0)
+            client.increment('thumbnail_cache_misses', pairs[`${REDIS_KEY_PREFIX}metrics:thumbnail:cache_misses`] || pairs['metrics:thumbnail:cache_misses'] || 0)
+          } catch {}
+        }
+      } catch {}
+    }
+
+    // reset counters (best-effort)
+    for (const k of keys) {
+      try { await redis.set(k, '0', 'PX', 24 * 60 * 60 * 1000) } catch {}
+    }
+    g.__metricsLastFlush = Date.now()
+  } finally {
+    g.__metricsFlushRunning = false
+  }
+}
+
+async function ensureStatsD() {
+  const STATSD_HOST = process.env.STATSD_HOST
+  if (!STATSD_HOST) return null
+  const g = globalThis as unknown as { __statsdClient?: unknown }
+  if (g.__statsdClient) return g.__statsdClient as unknown as { increment: (s: string, v?: number) => void }
+  try {
+    const hsMod = await import('hot-shots')
+  const StatsD = (hsMod as unknown as { StatsD?: unknown }).StatsD ?? (hsMod as unknown as { default?: unknown }).default ?? hsMod
+  const StatsCtor = StatsD as unknown as { new(opts?: { host?: string, port?: number }): unknown }
+    const client = new StatsCtor({ host: STATSD_HOST, port: Number(process.env.STATSD_PORT || '8125') }) as unknown as { increment: (s: string, v?: number) => void, close?: () => void }
+    g.__statsdClient = client
+    // register process exit handlers to close client if possible
+    try {
+      const closer = () => { try { if (client && typeof (client as unknown as { close?: unknown }).close === 'function') (client as unknown as { close?: () => void }).close!() } catch {} }
+      if (typeof process !== 'undefined') {
+        const p = process as unknown as { on?: (ev: string, fn: () => void) => void }
+        if (typeof p.on === 'function') {
+          p.on('SIGINT', closer)
+          p.on('SIGTERM', closer)
+          p.on('beforeExit', closer)
+        }
+      }
+    } catch {}
+    return client
+  } catch {
+    return null
+  }
+}
+
 
 async function fetchWikimediaThumbnail(fileName: string): Promise<string | undefined> {
   try {
+    // attempt to initialize redis client if REDIS_URL is set
+    const redis = await ensureRedis()
     // check Redis first (if available)
-    if (redisClient) {
+    if (redis) {
       try {
-        const v = await redisClient.get(`thumb:${fileName}`)
+        const v = await redis.get(`${REDIS_KEY_PREFIX}thumb:${fileName}`)
         if (v) return v
       } catch {
         // ignore redis errors and fallback to in-memory
@@ -160,16 +464,16 @@ async function fetchWikimediaThumbnail(fileName: string): Promise<string | undef
         const url = info.thumburl as string
         // update caches
         thumbnailCache.set(fileName, { ts: Date.now(), url })
-        if (redisClient) {
-          try { await redisClient.set(`thumb:${fileName}`, url, 'PX', THUMBNAIL_TTL) } catch {}
+        if (redis) {
+          try { await redis.set(`${REDIS_KEY_PREFIX}thumb:${fileName}`, url, 'PX', THUMBNAIL_TTL) } catch {}
         }
         return url
       }
       if (info && info.url) {
         const url = info.url as string
         thumbnailCache.set(fileName, { ts: Date.now(), url })
-        if (redisClient) {
-          try { await redisClient.set(`thumb:${fileName}`, url, 'PX', THUMBNAIL_TTL) } catch {}
+        if (redis) {
+          try { await redis.set(`${REDIS_KEY_PREFIX}thumb:${fileName}`, url, 'PX', THUMBNAIL_TTL) } catch {}
         }
         return url
       }
@@ -182,7 +486,8 @@ async function fetchWikimediaThumbnail(fileName: string): Promise<string | undef
 
 // short-term cache for thumbnails
 const thumbnailCache = new Map<string, { ts: number, url: string }>()
-const THUMBNAIL_TTL = 1000 * 60 * 60 // 1 hour
+// default thumbnail TTL: 24 hours (ms) - can be overridden by env THUMBNAIL_TTL_MS
+const THUMBNAIL_TTL = Number(process.env.THUMBNAIL_TTL_MS || String(1000 * 60 * 60 * 24))
 
 function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
   const toRad = (deg: number) => deg * Math.PI / 180
@@ -302,6 +607,8 @@ export async function GET(request: Request) {
     }
   const data = await cachedQueryOverpass(lat, lng, radius)
   const grouped = await groupByCategory(data, Number(lat), Number(lng))
+  // fire-and-forget metrics flush
+  try { const r = await ensureRedis(); void flushMetricsIfDue(r) } catch {}
     // sort each category by distance asc
     for (const k of Object.keys(grouped)) {
       const withCoords = grouped[k].filter(p => p.lat != null && p.lon != null)

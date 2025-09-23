@@ -112,3 +112,35 @@ npm run dev
 ## ライセンス
 
 [MIT License](LICENSE)
+
+## Redis / Redlock / StatsD (オプション)
+
+このリポジトリは Redis を使ったキャッシュ、分散ロック（Redlock）、および StatsD（hot-shots）でのメトリクス送信をサポートしますが、これらは必須ではありません。開発や小規模デプロイでは Redis が無くてもアプリは動作します。
+
+有効化手順（必要なときのみ）:
+
+- 必要な環境変数を設定します（例 `.env.local`）:
+
+```bash
+REDIS_URL=redis://user:pass@redis-host:6379
+REDIS_KEY_PREFIX=hyakumeizan:
+PUSHGATEWAY_URL=http://pushgateway.example:9091
+STATSD_HOST=statsd.example
+STATSD_PORT=8125
+```
+
+- optionalDependencies をインストールします（プロジェクトの依存関係にインストールする場合）:
+
+```bash
+npm install --include=optional
+```
+
+- 一部の管理スクリプトは Redis を前提としています（例: `scripts/migrate-redis-prefix.mjs`、`scripts/test-redis-connection.mjs`）。これらは README の指示通り `REDIS_URL` を設定してから実行してください。
+
+挙動のポイント:
+
+- アプリ本体は in-memory キャッシュにフォールバックするため、`REDIS_URL` が未設定でも機能します。
+- Redis が利用可能な場合、キャッシュの永続化、分散ロック、メトリクス蓄積が有効になります。
+- optional なパッケージは動的 import で取り扱っており、インストールしていない環境ではロードを試みず安全にフォールバックします。
+
+質問があれば次に Redis を完全に除去するか、運用時に有効化するためのドキュメントをさらに整備します。
