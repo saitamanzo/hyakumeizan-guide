@@ -109,23 +109,70 @@ async function cachedQueryOverpass(lat: string, lng: string, radius = '20000') {
   return combined
 }
 
+interface RedisLike {
+  get(key: string): Promise<string | null>
+  set(key: string, value: string, mode?: string, duration?: number): Promise<string | null>
+}
+
+let redisClient: RedisLike | null = null
+const REDIS_URL = process.env.REDIS_URL
+if (REDIS_URL) {
+  (async () => {
+    try {
+      const mod = await import('ioredis') as unknown
+  const modTyped = mod as unknown as { default?: unknown }
+  const Candidate = (modTyped.default ?? mod) as unknown
+  const Constructor = Candidate as { new(...args: unknown[]): RedisLike }
+  // instantiate Redis client
+  redisClient = new Constructor(REDIS_URL)
+    } catch {
+      redisClient = null
+    }
+  })()
+}
+
 async function fetchWikimediaThumbnail(fileName: string): Promise<string | undefined> {
   try {
-    // check cache first
+    // check Redis first (if available)
+    if (redisClient) {
+      try {
+        const v = await redisClient.get(`thumb:${fileName}`)
+        if (v) return v
+      } catch {
+        // ignore redis errors and fallback to in-memory
+      }
+    }
+    // check in-memory cache
     const now = Date.now()
     const cached = thumbnailCache.get(fileName)
     if (cached && (now - cached.ts) < THUMBNAIL_TTL) return cached.url
+
     const api = `https://commons.wikimedia.org/w/api.php?action=query&prop=imageinfo&iiprop=url&format=json&origin=*&titles=File:${encodeURIComponent(fileName)}`
     const res = await fetch(api)
     if (!res.ok) return undefined
     const json = await res.json()
     const pages = json.query?.pages
     if (!pages) return undefined
-      for (const k of Object.keys(pages)) {
+    for (const k of Object.keys(pages)) {
       const p = pages[k]
       const info = p.imageinfo && p.imageinfo[0]
-      if (info && info.thumburl) return info.thumburl as string
-      if (info && info.url) return info.url as string
+      if (info && info.thumburl) {
+        const url = info.thumburl as string
+        // update caches
+        thumbnailCache.set(fileName, { ts: Date.now(), url })
+        if (redisClient) {
+          try { await redisClient.set(`thumb:${fileName}`, url, 'PX', THUMBNAIL_TTL) } catch {}
+        }
+        return url
+      }
+      if (info && info.url) {
+        const url = info.url as string
+        thumbnailCache.set(fileName, { ts: Date.now(), url })
+        if (redisClient) {
+          try { await redisClient.set(`thumb:${fileName}`, url, 'PX', THUMBNAIL_TTL) } catch {}
+        }
+        return url
+      }
     }
   } catch {
     // ignore

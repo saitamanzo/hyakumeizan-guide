@@ -1,5 +1,12 @@
 "use client"
 import React, { useEffect, useState } from 'react'
+import {
+  FireIcon,
+  SparklesIcon,
+  MapPinIcon,
+  BuildingStorefrontIcon,
+  MapIcon,
+} from '@heroicons/react/24/outline'
 
 type Place = {
   id: string
@@ -73,7 +80,20 @@ export default function NearbyPlaces({ lat, lng, radius = 20000 }: { lat: number
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {Object.entries(data).map(([category, places]) => (
           <div key={category} className="bg-white shadow-sm rounded-lg p-4">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">{category.replace(/_/g, ' ')}</h3>
+            <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-3">
+              {(() => {
+                switch (category) {
+                  case 'hot_springs': return <FireIcon className="w-5 h-5 text-red-500" aria-hidden />
+                  case 'soba_restaurants': return <SparklesIcon className="w-5 h-5 text-amber-600" aria-hidden />
+                  case 'fishing_streams': return <MapPinIcon className="w-5 h-5 text-sky-500" aria-hidden />
+                  case 'hotels': return <BuildingStorefrontIcon className="w-5 h-5 text-gray-700" aria-hidden />
+                  case 'ski_resorts': return <SparklesIcon className="w-5 h-5 text-blue-500" aria-hidden />
+                  case 'attractions': return <MapIcon className="w-5 h-5 text-green-600" aria-hidden />
+                  default: return <MapIcon className="w-5 h-5 text-gray-400" aria-hidden />
+                }
+              })()}
+              <span>{category.replace(/_/g, ' ')}</span>
+            </h3>
             {places.length === 0 ? (
               <div className="text-sm text-gray-500">該当スポットなし</div>
             ) : (
@@ -85,7 +105,19 @@ export default function NearbyPlaces({ lat, lng, radius = 20000 }: { lat: number
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={p.image} alt={p.name || ''} className="w-full h-full object-cover" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-400">🗺️</div>
+                        <div className="w-full h-full flex items-center justify-center text-gray-400">
+                          {(() => {
+                            switch (category) {
+                                case 'hot_springs': return <FireIcon className="w-6 h-6 text-red-400" />
+                                case 'soba_restaurants': return <SparklesIcon className="w-6 h-6 text-amber-500" />
+                                case 'fishing_streams': return <MapPinIcon className="w-6 h-6 text-sky-400" />
+                                case 'hotels': return <BuildingStorefrontIcon className="w-6 h-6 text-gray-500" />
+                                case 'ski_resorts': return <SparklesIcon className="w-6 h-6 text-blue-400" />
+                                case 'attractions': return <MapIcon className="w-6 h-6 text-green-500" />
+                                default: return <MapIcon className="w-6 h-6 text-gray-300" />
+                            }
+                          })()}
+                        </div>
                       )}
                     </div>
                     <div className="flex-1">
