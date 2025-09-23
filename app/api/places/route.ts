@@ -20,6 +20,7 @@ type OverpassElement = {
   lat?: number
   lon?: number
   center?: { lat: number; lon: number }
+  geometry?: { lat: number; lon: number }[]
   tags?: Record<string, string>
 }
 
@@ -70,8 +71,8 @@ async function queryOverpass(lat: string, lng: string, radius = '20000') {
     parts.push(CATEGORY_QUERIES[key])
   }
   const combined = parts.join('\n')
-  // request nodes/ways/relations, body for tags, and centers for geometries
-  const q = `[out:json][timeout:25];( ${combined} );out center tags;` 
+  // request nodes/ways/relations, include center and geometry when available
+  const q = `[out:json][timeout:25];( ${combined} );out center tags geom;` 
   const body = `data=${encodeURIComponent(q.replace(/LAT/g, lat).replace(/LNG/g, lng).replace(/RADIUS/g, radius))}`
 
   const res = await fetch('https://overpass-api.de/api/interpreter', {
@@ -102,13 +103,17 @@ async function cachedQueryOverpass(lat: string, lng: string, radius = '20000') {
 
 async function fetchWikimediaThumbnail(fileName: string): Promise<string | undefined> {
   try {
+    // check cache first
+    const now = Date.now()
+    const cached = thumbnailCache.get(fileName)
+    if (cached && (now - cached.ts) < THUMBNAIL_TTL) return cached.url
     const api = `https://commons.wikimedia.org/w/api.php?action=query&prop=imageinfo&iiprop=url&format=json&origin=*&titles=File:${encodeURIComponent(fileName)}`
     const res = await fetch(api)
     if (!res.ok) return undefined
     const json = await res.json()
     const pages = json.query?.pages
     if (!pages) return undefined
-    for (const k of Object.keys(pages)) {
+      for (const k of Object.keys(pages)) {
       const p = pages[k]
       const info = p.imageinfo && p.imageinfo[0]
       if (info && info.thumburl) return info.thumburl as string
@@ -119,6 +124,10 @@ async function fetchWikimediaThumbnail(fileName: string): Promise<string | undef
   }
   return undefined
 }
+
+// short-term cache for thumbnails
+const thumbnailCache = new Map<string, { ts: number, url: string }>()
+const THUMBNAIL_TTL = 1000 * 60 * 60 // 1 hour
 
 function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
   const toRad = (deg: number) => deg * Math.PI / 180
@@ -155,8 +164,20 @@ async function groupByCategory(overpassData: OverpassResponse, centerLat: number
   const elements = Array.isArray(overpassData.elements) ? overpassData.elements : []
   for (const el of elements) {
     if (!el.type || !el.tags) continue
-    const lat = el.lat ?? el.center?.lat
-    const lon = el.lon ?? el.center?.lon
+    // compute lat/lon: prefer node lat/lon, then center, then centroid of geometry
+    let lat = el.lat ?? el.center?.lat
+    let lon = el.lon ?? el.center?.lon
+    if ((lat == null || lon == null) && Array.isArray(el.geometry) && el.geometry.length > 0) {
+      // compute centroid of geometry points
+      let sumX = 0
+      let sumY = 0
+      for (const g of el.geometry) {
+        sumX += g.lat
+        sumY += g.lon
+      }
+      lat = sumX / el.geometry.length
+      lon = sumY / el.geometry.length
+    }
     const place: Place = {
       id: `${el.type}/${el.id}`,
       name: el.tags?.name,
