@@ -71,13 +71,23 @@ async function queryOverpassCategory(categoryKey: string, lat: string, lng: stri
   if (!qTemplate) return { elements: [] } as OverpassResponse
   const q = `[out:json][timeout:25];( ${qTemplate} );out center tags geom;`
   const body = `data=${encodeURIComponent(q.replace(/LAT/g, lat).replace(/LNG/g, lng).replace(/RADIUS/g, radius))}`
-  const res = await fetch('https://overpass-api.de/api/interpreter', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body,
-  })
-  if (!res.ok) return { elements: [] } as OverpassResponse
-  return (await res.json()) as OverpassResponse
+  try {
+    const res = await fetch('https://overpass-api.de/api/interpreter', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body,
+    })
+    if (!res.ok) {
+      console.error('Overpass API returned non-ok for category', categoryKey, 'status', res.status)
+      return { elements: [] } as OverpassResponse
+    }
+    return (await res.json()) as OverpassResponse
+  } catch (e) {
+    try {
+      console.error('Overpass fetch error for category', categoryKey, 'err', e?.message ?? String(e))
+    } catch {}
+    return { elements: [] } as OverpassResponse
+  }
 }
 
 async function cachedQueryOverpass(lat: string, lng: string, radius = '20000') {
@@ -155,7 +165,10 @@ async function fetchWikimediaThumbnail(identifier: string): Promise<string | und
     try {
       const api = `https://commons.wikimedia.org/w/api.php?action=query&prop=imageinfo&iiprop=url&format=json&origin=*&titles=${encodeURIComponent(title)}`
       const res = await fetch(api)
-      if (!res.ok) return undefined
+      if (!res.ok) {
+        console.error('Wikimedia imageinfo non-ok', title, res.status)
+        return undefined
+      }
       const json = await res.json()
       const pages = json.query?.pages
       if (!pages) return undefined
@@ -165,8 +178,10 @@ async function fetchWikimediaThumbnail(identifier: string): Promise<string | und
         const url = info?.thumburl || info?.url
         if (url) return url
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      try {
+        console.error('Wikimedia fetch error for imageinfo', title, err?.message ?? String(err))
+      } catch {}
     }
     return undefined
   }
@@ -176,7 +191,10 @@ async function fetchWikimediaThumbnail(identifier: string): Promise<string | und
       const title = catName.startsWith('Category:') ? catName : `Category:${catName}`
       const cmApi = `https://commons.wikimedia.org/w/api.php?action=query&list=categorymembers&cmtitle=${encodeURIComponent(title)}&cmtype=file&cmlimit=5&format=json&origin=*`
       const res = await fetch(cmApi)
-      if (!res.ok) return undefined
+      if (!res.ok) {
+        console.error('Wikimedia categorymembers non-ok', title, res.status)
+        return undefined
+      }
       const json = await res.json()
       const members = json.query?.categorymembers || []
       for (const m of members) {
@@ -186,8 +204,10 @@ async function fetchWikimediaThumbnail(identifier: string): Promise<string | und
           if (url) return url
         }
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      try {
+        console.error('Wikimedia fetch error for category', catName, err?.message ?? String(err))
+      } catch {}
     }
     return undefined
   }
@@ -271,8 +291,14 @@ async function groupByCategory(overpassData: OverpassResponse, centerLat: number
     if (!image && el.tags) {
       const candidate = el.tags.wikimedia_commons || el.tags.image || el.tags['image']
       if (candidate && !/^https?:\/\//i.test(candidate)) {
-        const thumb = await fetchWikimediaThumbnail(candidate)
-        if (thumb) image = thumb
+        try {
+          const thumb = await fetchWikimediaThumbnail(candidate)
+          if (thumb) image = thumb
+        } catch (err) {
+          try {
+            console.error('Error fetching thumbnail for candidate', candidate, err?.message ?? String(err))
+          } catch {}
+        }
       }
     }
 
