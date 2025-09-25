@@ -65,32 +65,9 @@ function levenshtein(a: string, b: string) {
   return dp[m][n];
 }
 
-function makeSearchFallback(name: string): MediaItem[] {
-  const q = encodeURIComponent(name);
-  const items: MediaItem[] = [
-    // books / general
-    { id: `search-amazon-${q}`, type: 'book', title: `${name} をAmazonで検索`, url: `https://www.amazon.co.jp/s?k=${q}`, thumbnail: '/file.svg' },
-    { id: `search-googlebooks-${q}`, type: 'book', title: `${name} を書籍で検索`, url: `https://www.google.co.jp/search?tbm=bks&q=${q}`, thumbnail: '/file.svg' },
-    { id: `search-wikipedia-${q}`, type: 'other', title: `${name} のWikipedia`, url: `https://ja.wikipedia.org/wiki/${q}`, thumbnail: '/file.svg' },
-
-    // movies / films
-    { id: `search-eiga-${q}`, type: 'movie', title: `${name} をeiga.comで検索`, url: `https://eiga.com/search/?q=${q}`, thumbnail: '/file.svg' },
-    { id: `search-filmarks-${q}`, type: 'movie', title: `${name} をFilmarksで検索`, url: `https://filmarks.com/search?query=${q}`, thumbnail: '/file.svg' },
-    { id: `search-imdb-${q}`, type: 'movie', title: `${name} をIMDbで検索`, url: `https://www.imdb.com/find?q=${q}`, thumbnail: '/file.svg' },
-
-    // drama / TV
-    { id: `search-thetv-${q}`, type: 'drama', title: `${name} をTheTVで検索`, url: `https://thetv.jp/search/?q=${q}`, thumbnail: '/file.svg' },
-
-    // novels / light novels / ebooks
-    { id: `search-bookwalker-${q}`, type: 'book', title: `${name} をBookWalkerで検索`, url: `https://bookwalker.jp/search/?keyword=${q}`, thumbnail: '/file.svg' },
-    { id: `search-bookmeter-${q}`, type: 'book', title: `${name} をBookmeterで検索`, url: `https://bookmeter.com/search?query=${q}`, thumbnail: '/file.svg' },
-    { id: `search-honto-${q}`, type: 'book', title: `${name} をhontoで検索`, url: `https://www.honto.jp/search.html?qt=${q}`, thumbnail: '/file.svg' },
-
-    // video general
-    { id: `search-youtube-${q}`, type: 'movie', title: `${name} をYouTubeで検索`, url: `https://www.youtube.com/results?search_query=${q}`, thumbnail: '/file.svg' }
-  ];
-  return items;
-}
+// Note: previously we provided external search fallbacks (e.g. Amazon, YouTube, eiga.com).
+// Per the user's request, we now only display items present in the internal library.
+// The fallback generator has been removed to avoid returning external search links.
 
 export function getRelatedMediaForMountain(name: string | undefined | null): MediaItem[] {
   if (!name) return [];
@@ -140,5 +117,8 @@ export function getRelatedMediaForMountain(name: string | undefined | null): Med
   }
 
   // 7) 見つからない場合は外部検索へのフォールバックを返す
-  return makeSearchFallback(name);
+  // 内部ライブラリにヒットしなければ空配列を返して、UI 側で「関連情報なし」を表示する
+  // （以前は外部サイト検索のフォールバックを返していましたが、
+  //  要望によりライブラリでヒットしたものだけ表示するためここで空を返します）
+  return [];
 }
