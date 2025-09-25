@@ -34,7 +34,7 @@ export default function RelatedMediaAdmin() {
     if (!mountainName) return setStatus('山名を入力してください');
     setStatus('読み込み中...');
     try {
-      const res = await fetch('/api/related-media');
+  const res = await fetch('/api/admin/related-media');
       const json = await res.json();
       const data = json.data || {};
       setItems(data[mountainName] || []);
@@ -52,7 +52,7 @@ export default function RelatedMediaAdmin() {
     const item: MediaItem = { id: `${Date.now()}`, type: newType, title: newTitle, url: newUrl };
     setStatus('追加中...');
     try {
-      const res = await fetch('/api/related-media', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mountainName, item }) });
+  const res = await fetch('/api/admin/related-media', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mountainName, item }) });
       const j = await res.json();
       if (j.ok) {
         setStatus('追加しました');
@@ -83,7 +83,7 @@ export default function RelatedMediaAdmin() {
     const item: MediaItem = { id: editingId, type: editType, title: editTitle, url: editUrl };
     setStatus('保存中...');
     try {
-      const res = await fetch('/api/related-media', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mountainName, item }) });
+  const res = await fetch('/api/admin/related-media', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mountainName, item }) });
       const j = await res.json();
       if (j.ok) {
         setStatus('保存しました');
@@ -103,7 +103,7 @@ export default function RelatedMediaAdmin() {
     if (!confirm('このアイテムを本当に削除しますか？')) return;
     setStatus('削除中...');
     try {
-      const res = await fetch('/api/related-media', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mountainName, itemId: id }) });
+  const res = await fetch('/api/admin/related-media', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mountainName, itemId: id }) });
       const j = await res.json();
       if (j.ok) {
         setStatus('削除しました');
@@ -217,6 +217,22 @@ export default function RelatedMediaAdmin() {
               <div className="ml-4 flex-shrink-0 flex flex-col gap-2">
                 <button onClick={()=>startEdit(i)} className="px-2 py-1 bg-yellow-400 text-black rounded">編集</button>
                 <button onClick={()=>deleteItem(i.id)} className="px-2 py-1 bg-red-600 text-white rounded">削除</button>
+                <button onClick={async () => {
+                  setStatus('サムネ取得中...');
+                  try {
+                    const res = await fetch('/api/admin/related-media/thumbnail', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: i.id, sourceUrl: i.url }) });
+                    const j = await res.json();
+                    if (j.ok) {
+                      setStatus('サムネを更新しました');
+                      await loadItems();
+                    } else {
+                      setStatus(`サムネ取得失敗: ${j.error || 'unknown'}`);
+                    }
+                  } catch (e) {
+                    console.error(e);
+                    setStatus('サムネ取得に失敗しました');
+                  }
+                }} className="px-2 py-1 bg-blue-600 text-white rounded">サムネ自動取得</button>
               </div>
             </div>
           ))}
