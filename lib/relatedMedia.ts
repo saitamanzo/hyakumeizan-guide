@@ -127,16 +127,11 @@ export function getRelatedMediaForMountain(name: string | undefined | null): Med
 export function getExternalSearchLinks(name: string): MediaItem[] {
   const q = encodeURIComponent(name);
   const items: MediaItem[] = [
-    { id: `search-amazon-${q}`, type: 'book', title: `${name} をAmazonで検索`, url: `https://www.amazon.co.jp/s?k=${q}`, thumbnail: '/file.svg' },
-    { id: `search-googlebooks-${q}`, type: 'book', title: `${name} を書籍で検索`, url: `https://www.google.co.jp/search?tbm=bks&q=${q}`, thumbnail: '/file.svg' },
-    { id: `search-wikipedia-${q}`, type: 'other', title: `${name} のWikipedia`, url: `https://ja.wikipedia.org/wiki/${q}`, thumbnail: '/file.svg' },
-    { id: `search-eiga-${q}`, type: 'movie', title: `${name} をeiga.comで検索`, url: `https://eiga.com/search/?q=${q}`, thumbnail: '/file.svg' },
-    { id: `search-filmarks-${q}`, type: 'movie', title: `${name} をFilmarksで検索`, url: `https://filmarks.com/search?query=${q}`, thumbnail: '/file.svg' },
-    { id: `search-imdb-${q}`, type: 'movie', title: `${name} をIMDbで検索`, url: `https://www.imdb.com/find?q=${q}`, thumbnail: '/file.svg' },
-    { id: `search-thetv-${q}`, type: 'drama', title: `${name} をTheTVで検索`, url: `https://thetv.jp/search/?q=${q}`, thumbnail: '/file.svg' },
-    { id: `search-bookwalker-${q}`, type: 'book', title: `${name} をBookWalkerで検索`, url: `https://bookwalker.jp/search/?keyword=${q}`, thumbnail: '/file.svg' },
-    { id: `search-bookmeter-${q}`, type: 'book', title: `${name} をBookmeterで検索`, url: `https://bookmeter.com/search?query=${q}`, thumbnail: '/file.svg' },
-    { id: `search-honto-${q}`, type: 'book', title: `${name} をhontoで検索`, url: `https://www.honto.jp/search.html?qt=${q}`, thumbnail: '/file.svg' },
+    // Amazon: books
+    { id: `search-amazon-books-${q}`, type: 'book', title: `${name} をAmazon（書籍）で検索`, url: `https://www.amazon.co.jp/s?k=${q}&i=stripbooks`, thumbnail: '/file.svg' },
+    // Amazon: Prime Video
+    { id: `search-amazon-prime-${q}`, type: 'movie', title: `${name} をAmazon Prime Videoで検索`, url: `https://www.amazon.co.jp/s?k=${q}&i=instant-video`, thumbnail: '/file.svg' },
+    // YouTube
     { id: `search-youtube-${q}`, type: 'movie', title: `${name} をYouTubeで検索`, url: `https://www.youtube.com/results?search_query=${q}`, thumbnail: '/file.svg' }
   ];
   return items;
