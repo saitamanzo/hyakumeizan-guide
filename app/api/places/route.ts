@@ -219,7 +219,18 @@ function mapGoogleRawToPlaces(results: unknown[] = [], centerLat: number, center
       ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${encodeURIComponent(r.photos[0].photo_reference)}&key=${GOOGLE_KEY}`
       : undefined
     const distance = typeof lat === 'number' && typeof lon === 'number' ? haversineDistance(centerLat, centerLon, lat, lon) : undefined
-    return { id, name: r.name, lat, lon, tags, distance, google_maps_url: r.place_id ? `https://www.google.com/maps/place/?q=place_id:${r.place_id}` : undefined, image, rating: typeof r.rating === 'number' ? r.rating : undefined, user_ratings_total: typeof r.user_ratings_total === 'number' ? r.user_ratings_total : undefined }
+    // If no image provided by Google but we have coordinates, provide a static OSM map snapshot as a thumbnail
+    let finalImage = image
+    if (!finalImage && typeof lat === 'number' && typeof lon === 'number') {
+      try {
+        const sizeW = 400
+        const sizeH = 200
+        finalImage = `https://staticmap.openstreetmap.de/staticmap.php?center=${encodeURIComponent(`${lat},${lon}`)}&zoom=14&size=${sizeW}x${sizeH}&markers=${encodeURIComponent(`${lat},${lon},red-pushpin`)}`
+      } catch {
+        finalImage = image
+      }
+    }
+    return { id, name: r.name, lat, lon, tags, distance, google_maps_url: r.place_id ? `https://www.google.com/maps/place/?q=place_id:${r.place_id}` : undefined, image: finalImage, rating: typeof r.rating === 'number' ? r.rating : undefined, user_ratings_total: typeof r.user_ratings_total === 'number' ? r.user_ratings_total : undefined }
   })
 }
 
@@ -589,6 +600,10 @@ async function groupByCategory(overpassData: OverpassResponse, centerLat: number
           } catch {}
         }
       }
+    }
+    // If still no image, prefer an internal placeholder image to avoid external map service calls
+    if (!image) {
+      image = `/images/placeholder-spot.svg`
     }
 
     const enriched: Place = { ...place, distance, osm_url, google_maps_url, image }
