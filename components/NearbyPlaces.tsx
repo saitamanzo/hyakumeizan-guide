@@ -30,27 +30,29 @@ const SPOT_CATEGORY_MAP: Record<string, string> = {
   soba_restaurants: '蕎麦屋',
   hotels: '宿泊施設',
   ski_resorts: 'スキー場',
+  mountain_huts: '山小屋',
   attractions: '観光地',
   // 将来的に API 側で追加される可能性があるカテゴリ用ラベル
   camp_sites: 'キャンプ場',
-  restaurants: 'レストラン',
+  restaurants: '食堂',
   others: 'その他',
 }
 
 // 優先的に表示するカテゴリキーの順番
 // 既存の順序に、追加で要望のあったカテゴリを挿入
 const CATEGORY_ORDER = [
+  // 優先順: 温泉、蕎麦、山小屋、キャンプ場、宿泊施設、食堂、観光地、スキー場
   'hot_springs',
   'soba_restaurants',
-  'hotels',
-  'attractions',
-  // 追加カテゴリ（存在する場合のみ表示されます）
-  'ski_resorts',
+  'mountain_huts',
   'camp_sites',
+  'hotels',
   'restaurants',
+  'attractions',
+  'ski_resorts',
 ]
 
-export default function NearbyPlaces({ lat, lng, radius = 20000 }: { lat: number; lng: number; radius?: number }) {
+export default function NearbyPlaces({ lat, lng, radius = 20000, mountainName }: { lat: number; lng: number; radius?: number, mountainName?: string }) {
   const [data, setData] = useState<PlacesResponse | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -62,10 +64,30 @@ export default function NearbyPlaces({ lat, lng, radius = 20000 }: { lat: number
       setLoading(true)
       setError(null)
       try {
-        const res = await fetch(`/api/places?lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}&radius=${encodeURIComponent(String(radius))}`)
-        if (!res.ok) throw new Error(`fetch error ${res.status}`)
-        const json = await res.json()
-        if (mounted) setData(json.data || null)
+        // 基本の一括取得に加え、温泉・スキー場は別クエリで確実に取得する
+    let baseUrl = `/api/places?lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}&radius=${encodeURIComponent(String(radius))}`
+  if (mountainName) baseUrl += `&q=${encodeURIComponent(String(mountainName))}`
+  const hotUrl = `${baseUrl}&category=hot_springs`
+  const skiUrl = `${baseUrl}&category=ski_resorts`
+
+        const [baseRes, hotRes, skiRes] = await Promise.all([
+          fetch(baseUrl),
+          fetch(hotUrl),
+          fetch(skiUrl),
+        ])
+        if (!baseRes.ok) throw new Error(`base fetch error ${baseRes.status}`)
+        if (!hotRes.ok) throw new Error(`hot fetch error ${hotRes.status}`)
+        if (!skiRes.ok) throw new Error(`ski fetch error ${skiRes.status}`)
+        const [baseJson, hotJson, skiJson] = await Promise.all([baseRes.json(), hotRes.json(), skiRes.json()])
+        // マージ: hot_springs と ski_resorts は個別結果で上書きする
+        const merged: PlacesResponse = { ...(baseJson.data || {}) }
+        if (hotJson.data && hotJson.data.hot_springs) merged.hot_springs = hotJson.data.hot_springs
+        if (skiJson.data && skiJson.data.ski_resorts) merged.ski_resorts = skiJson.data.ski_resorts
+        if (mounted) {
+          // DEBUG: ログに返却されたカテゴリキーを出す
+          try { console.debug('NearbyPlaces fetched categories:', Object.keys(merged || {})) } catch {}
+          setData(merged)
+        }
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e)
         setError(msg)
@@ -75,7 +97,7 @@ export default function NearbyPlaces({ lat, lng, radius = 20000 }: { lat: number
     }
     fetchPlaces()
     return () => { mounted = false }
-  }, [lat, lng, radius])
+  }, [lat, lng, radius, mountainName])
 
   if (loading) return (
     <div className="mt-8">
@@ -138,24 +160,154 @@ export default function NearbyPlaces({ lat, lng, radius = 20000 }: { lat: number
     const sorted = (places || []).slice().sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity))
     return [category, sorted.slice(0, 30)]
   })
+  // カテゴリごとのプレビュー件数: デフォルト3件。
+  const DEFAULT_PREVIEW = 3
+  const CATEGORY_PREVIEW_OVERRIDES: Record<string, number> = {
+    // ここにカテゴリごとの初期表示件数を追加できます。例: 'soba_restaurants': 5
+  }
+
+  // 温泉・スキー場を独立表示
+  const renderCategorySection = (category: string, places: Place[]) => {
+    const spotsWithCoords = (places || []).filter(p => typeof p.lat === 'number' && typeof p.lon === 'number')
+    return (
+      <div key={category} className="bg-white shadow-sm rounded-lg p-4">
+        <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-3">
+          {(() => {
+            switch (category) {
+              case 'hot_springs': return <FireIcon className="w-5 h-5 text-red-500" aria-hidden />
+              case 'ski_resorts': return <SparklesIcon className="w-5 h-5 text-blue-500" aria-hidden />
+              case 'mountain_huts': return <BuildingStorefrontIcon className="w-5 h-5 text-amber-600" aria-hidden />
+              default: return <MapIcon className="w-5 h-5 text-gray-400" aria-hidden />
+            }
+          })()}
+          <span>{SPOT_CATEGORY_MAP[category] || category.replace(/_/g, ' ')}</span>
+          {spotsWithCoords.length > 0 && (
+            <CategoryMap
+              spots={spotsWithCoords}
+              mountainLat={lat}
+              mountainLng={lng}
+              mountainName={''}
+              categoryLabel={SPOT_CATEGORY_MAP[category] || category}
+            />
+          )}
+        </h3>
+        {places.length === 0 ? (
+          <div className="text-sm text-gray-500">該当スポットなし</div>
+        ) : (
+          <>
+            <ul className="space-y-3">
+              {(expandedCategories[category]
+                ? places
+                : places.slice(0, (CATEGORY_PREVIEW_OVERRIDES[category] ?? DEFAULT_PREVIEW))
+              ).map((p, i) => (
+                <li key={`${p.id}-${i}`} className="flex items-start gap-3">
+                  <div className="w-16 h-16 flex-shrink-0 rounded overflow-hidden bg-gray-100">
+                    {p.image ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.image} alt={p.name || ''} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-400">
+                        {(() => {
+                          switch (category) {
+                            case 'hot_springs': return <FireIcon className="w-6 h-6 text-red-400" />
+                            case 'ski_resorts': return <SparklesIcon className="w-6 h-6 text-blue-400" />
+                            case 'mountain_huts': return <BuildingStorefrontIcon className="w-6 h-6 text-amber-500" />
+                            default: return <MapIcon className="w-6 h-6 text-gray-300" />
+                          }
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <div className="font-medium text-gray-800">
+                        {(() => {
+                          const possible = p.tags || {}
+                          const homepage = (possible['website'] || possible['url'] || possible['homepage'] || possible['contact:website'] || possible['official_website']) as string | undefined
+                          const normalize = (u?: string) => {
+                            if (!u) return undefined
+                            try {
+                              const parsed = new URL(u)
+                              return parsed.toString()
+                            } catch {
+                              if (/^www\./i.test(u)) return `https://${u}`
+                              return undefined
+                            }
+                          }
+                          const hp = normalize(homepage)
+                          const gm = p.google_maps_url
+                          const osm = p.osm_url
+                          // スポット名は Google Maps を優先して開く。なければ公式サイト、さらに無ければ OSM を使う。
+                          const nameHref = gm || hp || osm
+                          return (
+                            <div className="flex items-baseline gap-2">
+                              {nameHref ? (
+                                <a href={nameHref} target="_blank" rel="noopener noreferrer" className="text-gray-800 hover:underline">{p.name || '無名スポット'}</a>
+                              ) : (
+                                <span className="text-gray-800">{p.name || '無名スポット'}</span>
+                              )}
+                              {/* 公式サイトがある場合は小さなリンクを添える */}
+                              {hp && (
+                                <a href={hp} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">公式サイト</a>
+                              )}
+                            </div>
+                          )
+                        })()}
+                      </div>
+                      <div className="text-xs text-gray-500">{p.distance != null ? `${(p.distance/1000).toFixed(1)} km` : ''}</div>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">{p.tags && Object.entries(p.tags).slice(0,3).map(([k,v])=>`${k}:${v}`).join(' • ')}</div>
+                    <div className="mt-2 flex items-center gap-3">
+                      {p.google_maps_url && (
+                        <a href={p.google_maps_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600">Google Maps</a>
+                      )}
+                      {p.osm_url && (
+                        <a href={p.osm_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600">OSM</a>
+                      )}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            {places.length > 3 && (
+              <div className="mt-3">
+                <button
+                  type="button"
+                  className="text-sm text-blue-600 hover:underline"
+                  onClick={() => setExpandedCategories(prev => ({ ...prev, [category]: !prev[category] }))}
+                >
+                  {expandedCategories[category] ? '閉じる' : `もっと見る (${places.length} 件)`}
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    )
+  }
+
+  // 温泉・スキー場のみ抽出
+  const hotSpringEntry = finalListCapped.find(([c]) => c === 'hot_springs')
+  const skiResortEntry = finalListCapped.find(([c]) => c === 'ski_resorts')
+  // その他カテゴリ
+  const otherEntries = finalListCapped.filter(([c]) => c !== 'hot_springs' && c !== 'ski_resorts')
 
   return (
     <div className="mt-8">
       <h2 className="text-xl font-bold mb-3">近郊スポット</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-  {finalListCapped.map(([category, places]) => {
+        {/* 温泉セクション */}
+        {hotSpringEntry && renderCategorySection(hotSpringEntry[0], hotSpringEntry[1])}
+        {/* その他カテゴリまとめて */}
+        {otherEntries.map(([category, places]) => {
           const spotsWithCoords = (places || []).filter(p => typeof p.lat === 'number' && typeof p.lon === 'number')
-          // 経路（directions）は不要とのことなので、カテゴリリンクは山の中心で地図を開く方式に変更
           return (
             <div key={category} className="bg-white shadow-sm rounded-lg p-4">
               <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-3">
                 {(() => {
                   switch (category) {
-                    case 'hot_springs': return <FireIcon className="w-5 h-5 text-red-500" aria-hidden />
                     case 'soba_restaurants': return <SparklesIcon className="w-5 h-5 text-amber-600" aria-hidden />
-                    
                     case 'hotels': return <BuildingStorefrontIcon className="w-5 h-5 text-gray-700" aria-hidden />
-                    case 'ski_resorts': return <SparklesIcon className="w-5 h-5 text-blue-500" aria-hidden />
                     case 'attractions': return <MapIcon className="w-5 h-5 text-green-600" aria-hidden />
                     default: return <MapIcon className="w-5 h-5 text-gray-400" aria-hidden />
                   }
@@ -176,8 +328,9 @@ export default function NearbyPlaces({ lat, lng, radius = 20000 }: { lat: number
               ) : (
                 <>
                   <ul className="space-y-3">
-                    {(
-                      expandedCategories[category] ? places : places.slice(0, 3)
+                    {(expandedCategories[category]
+                      ? places
+                      : places.slice(0, (CATEGORY_PREVIEW_OVERRIDES[category] ?? DEFAULT_PREVIEW))
                     ).map((p, i) => (
                       <li key={`${p.id}-${i}`} className="flex items-start gap-3">
                         <div className="w-16 h-16 flex-shrink-0 rounded overflow-hidden bg-gray-100">
@@ -188,11 +341,8 @@ export default function NearbyPlaces({ lat, lng, radius = 20000 }: { lat: number
                             <div className="w-full h-full flex items-center justify-center text-gray-400">
                               {(() => {
                                 switch (category) {
-                                  case 'hot_springs': return <FireIcon className="w-6 h-6 text-red-400" />
                                   case 'soba_restaurants': return <SparklesIcon className="w-6 h-6 text-amber-500" />
-                                  
                                   case 'hotels': return <BuildingStorefrontIcon className="w-6 h-6 text-gray-500" />
-                                  case 'ski_resorts': return <SparklesIcon className="w-6 h-6 text-blue-400" />
                                   case 'attractions': return <MapIcon className="w-6 h-6 text-green-500" />
                                   default: return <MapIcon className="w-6 h-6 text-gray-300" />
                                 }
@@ -205,25 +355,33 @@ export default function NearbyPlaces({ lat, lng, radius = 20000 }: { lat: number
                             <div className="font-medium text-gray-800">
                               {(() => {
                                 const possible = p.tags || {}
-                                const homepage = (possible['website'] || possible['url'] || possible['homepage'] || possible['contact:website'] || possible['official_website']) as string | undefined
-                                const normalize = (u?: string) => {
-                                  if (!u) return undefined
-                                  try {
-                                    const parsed = new URL(u)
-                                    return parsed.toString()
-                                  } catch {
-                                    // add scheme if missing
-                                    if (/^www\./i.test(u)) return `https://${u}`
-                                    return undefined
+                                  const homepage = (possible['website'] || possible['url'] || possible['homepage'] || possible['contact:website'] || possible['official_website']) as string | undefined
+                                  const normalize = (u?: string) => {
+                                    if (!u) return undefined
+                                    try {
+                                      const parsed = new URL(u)
+                                      return parsed.toString()
+                                    } catch {
+                                      if (/^www\./i.test(u)) return `https://${u}`
+                                      return undefined
+                                    }
                                   }
-                                }
-                                const hp = normalize(homepage)
-                                if (hp) {
+                                  const hp = normalize(homepage)
+                                  const gm = p.google_maps_url
+                                  const osm = p.osm_url
+                                  const nameHref = gm || hp || osm
                                   return (
-                                    <a href={hp} target="_blank" rel="noopener noreferrer" className="text-gray-800 hover:underline">{p.name || '公式サイト'}</a>
+                                    <div className="flex items-baseline gap-2">
+                                      {nameHref ? (
+                                        <a href={nameHref} target="_blank" rel="noopener noreferrer" className="text-gray-800 hover:underline">{p.name || '無名スポット'}</a>
+                                      ) : (
+                                        <span className="text-gray-800">{p.name || '無名スポット'}</span>
+                                      )}
+                                      {hp && (
+                                        <a href={hp} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">公式サイト</a>
+                                      )}
+                                    </div>
                                   )
-                                }
-                                return p.name || '無名スポット'
                               })()}
                             </div>
                             <div className="text-xs text-gray-500">{p.distance != null ? `${(p.distance/1000).toFixed(1)} km` : ''}</div>
@@ -257,6 +415,8 @@ export default function NearbyPlaces({ lat, lng, radius = 20000 }: { lat: number
             </div>
           )
         })}
+        {/* スキー場セクション（最後に配置） */}
+        {skiResortEntry && renderCategorySection(skiResortEntry[0], skiResortEntry[1])}
       </div>
     </div>
   )

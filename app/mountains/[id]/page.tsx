@@ -1,4 +1,4 @@
-// カテゴリ番号→地域名マップ
+// カテゴリ温泉、スキー場番号→地域名マップ
 const CATEGORY_MAP: Record<number, string> = {
   1: '北海道',
   2: '東北',
@@ -22,6 +22,8 @@ import ClimbRecord from '@/components/ClimbRecord';
 import { WeatherMapIntegration, ImageGalleryWrapper } from '@/components/MountainClientComponents';
 import NearbyPlaces from '@/components/NearbyPlaces';
 import NearbyNews from '@/components/NearbyNews';
+import RelatedMedia from '@/components/RelatedMedia';
+import { getRelatedMediaForMountain } from '@/lib/relatedMedia';
 
 export default async function MountainPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -110,8 +112,11 @@ export default async function MountainPage({ params }: { params: Promise<{ id: s
     return (
       <div className="py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* ...existing code... */}
-          {/* ヘッダーセクション */}
+            {/* 一覧に戻るボタン（ページ上部） */}
+            <div className="mt-4 mb-4">
+              <a href={`/mountains?focus=${encodeURIComponent(id)}`} className="inline-flex items-center px-3 py-2 bg-gray-100 text-gray-800 rounded hover:bg-gray-200">一覧に戻る</a>
+            </div>
+            {/* ヘッダーセクション */}
           <div className="relative pb-8">
             <div className="relative h-[40rem] w-full overflow-hidden rounded-lg">
               {cover ? (
@@ -178,8 +183,10 @@ export default async function MountainPage({ params }: { params: Promise<{ id: s
 
           {/* 近隣スポット */}
           <div className="mt-8">
-            <NearbyPlaces lat={latitude} lng={longitude} radius={20000} />
+            <NearbyPlaces lat={latitude} lng={longitude} radius={20000} mountainName={mountain.name} />
           </div>
+
+          {/* (リンクはページ上部に移動済み) */}
 
           {/* 登山計画 */}
           <div className="mt-8">
@@ -248,6 +255,11 @@ export default async function MountainPage({ params }: { params: Promise<{ id: s
                 <p className="mt-2 text-base text-gray-900">{mountain.description}</p>
               </div>
             )}
+          </div>
+
+          {/* 関連ライブラリ */}
+          <div className="mt-6">
+            <RelatedMedia items={getRelatedMediaForMountain(mountain.name)} />
           </div>
 
           {/* 登山ルート */}

@@ -30,7 +30,14 @@ const CATEGORY_QUERIES: Record<string, string> = {
   hot_springs: `
     node(around:RADIUS,LAT,LNG)[leisure=spa];
     node(around:RADIUS,LAT,LNG)[amenity=spa];
+    node(around:RADIUS,LAT,LNG)[hot_spring];
+    node(around:RADIUS,LAT,LNG)[natural=spring];
+    node(around:RADIUS,LAT,LNG)[source~"hot_spring|温泉|onsen"];
+    node(around:RADIUS,LAT,LNG)[amenity=public_bath];
+    node(around:RADIUS,LAT,LNG)[name~"日帰り|スーパー銭湯|温泉|onsen|spa|スパ|sento"];
     way(around:RADIUS,LAT,LNG)[leisure=spa];
+    way(around:RADIUS,LAT,LNG)[amenity=spa];
+    way(around:RADIUS,LAT,LNG)[name~"日帰り|スーパー銭湯|温泉|onsen|spa|スパ|sento"];
     relation(around:RADIUS,LAT,LNG)[leisure=spa];
   `,
   soba_restaurants: `
@@ -39,10 +46,24 @@ const CATEGORY_QUERIES: Record<string, string> = {
     way(around:RADIUS,LAT,LNG)[cuisine~"soba|そば|蕎麦"];
     relation(around:RADIUS,LAT,LNG)[cuisine~"soba|そば|蕎麦"];
   `,
+  restaurants: `
+    node(around:RADIUS,LAT,LNG)[amenity=restaurant];
+    node(around:RADIUS,LAT,LNG)[shop=food];
+    node(around:RADIUS,LAT,LNG)[name~"食堂|定食|レストラン|食事|ご飯|めし"];
+    way(around:RADIUS,LAT,LNG)[amenity=restaurant];
+    relation(around:RADIUS,LAT,LNG)[amenity=restaurant];
+  `,
   hotels: `
     node(around:RADIUS,LAT,LNG)[tourism~"hotel|guest_house|hostel|motel"];
     way(around:RADIUS,LAT,LNG)[tourism~"hotel|guest_house|hostel|motel"];
     relation(around:RADIUS,LAT,LNG)[tourism~"hotel|guest_house|hostel|motel"];
+  `,
+  mountain_huts: `
+    node(around:RADIUS,LAT,LNG)[tourism~"alpine_hut|mountain_hut|refuge|hut"];
+    node(around:RADIUS,LAT,LNG)[building~"hut|shelter"];
+    node(around:RADIUS,LAT,LNG)[name~"小屋|山荘|山の家|避難小屋|避難所"];
+    way(around:RADIUS,LAT,LNG)[tourism~"alpine_hut|mountain_hut|refuge|hut"];
+    relation(around:RADIUS,LAT,LNG)[tourism~"alpine_hut|mountain_hut|refuge|hut"];
   `,
   ski_resorts: `
     node(around:RADIUS,LAT,LNG)[leisure=sports_centre][sport~"ski|スキー"];
@@ -72,6 +93,236 @@ const CATEGORY_QUERIES: Record<string, string> = {
 const overpassCache = new Map<string, { ts: number; data: OverpassResponse }>()
 const CACHE_TTL = 1000 * 60 * 10 // 10 minutes
 const localLocks = new Set<string>()
+
+// Google Places integration (single consolidated implementation)
+const GOOGLE_KEY = process.env.GOOGLE_MAPS_API_KEY || ''
+
+const CATEGORY_GOOGLE_PARAMS: Record<string, { keyword?: string; type?: string }> = {
+  // Include day-use, sento, super sento, day spa keywords
+  // Japanese terms: 日帰り, スーパー銭湯, 公衆浴場, 日帰り温泉
+  hot_springs: { keyword: '温泉 onsen spa 日帰り 日帰り温泉 スーパー銭湯 公衆浴場 sento "day spa" "day-use"' },
+  soba_restaurants: { keyword: '蕎麦 そば soba', type: 'restaurant' },
+  hotels: { type: 'lodging' },
+  ski_resorts: { keyword: 'スキー場 ski resort' },
+  mountain_huts: { keyword: '山小屋 小屋 山荘 避難小屋 hut refuge alpine hut' },
+  restaurants: { keyword: '食堂 レストラン 定食 食事 ご飯', type: 'restaurant' },
+  camp_sites: { keyword: 'キャンプ場 campground campsite' },
+  attractions: { keyword: '観光 観光地 viewpoint', type: 'tourist_attraction' },
+}
+
+// Simple in-memory cache for Google Places grouped results
+const googlePlacesCache = new Map<string, { ts: number; data: Record<string, Place[]> }>()
+const GOOGLE_TTL = 1000 * 60 * 10 // 10 minutes
+
+async function fetchGoogleNearbyRaw(params: { location: string; radius: number; keyword?: string; type?: string }, pages = 2) {
+  const qs = new URLSearchParams()
+  qs.set('location', params.location)
+  qs.set('radius', String(Math.min(params.radius, 50000)))
+  if (params.keyword) qs.set('keyword', params.keyword)
+  if (params.type) qs.set('type', params.type)
+  qs.set('key', GOOGLE_KEY)
+  qs.set('language', 'ja')
+
+  const outResults: unknown[] = []
+  let nextPageToken: string | undefined = undefined
+  for (let i = 0; i < pages; i++) {
+    if (nextPageToken) qs.set('pagetoken', nextPageToken)
+    const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?${qs.toString()}`
+    try {
+      const res = await fetch(url)
+      if (!res.ok) break
+      const json = await res.json()
+      const results = Array.isArray(json.results) ? json.results : []
+      outResults.push(...results)
+      nextPageToken = json.next_page_token
+      if (!nextPageToken) break
+      // short delay before next page token becomes valid
+      await new Promise((r) => setTimeout(r, 800))
+    } catch (err) {
+      try { console.error('Google nearby fetch error', err) } catch {}
+      break
+    }
+  }
+  return outResults
+}
+
+// Google Text Search (useful for queries like "利尻温泉", "利尻 日帰り温泉" etc.)
+async function fetchGoogleTextSearch(query: string, pages = 2) {
+  if (!GOOGLE_KEY) return [] as unknown[]
+  const qs = new URLSearchParams()
+  qs.set('query', query)
+  qs.set('key', GOOGLE_KEY)
+  qs.set('language', 'ja')
+
+  const outResults: unknown[] = []
+  let nextPageToken: string | undefined = undefined
+  for (let i = 0; i < pages; i++) {
+    if (nextPageToken) qs.set('pagetoken', nextPageToken)
+    const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?${qs.toString()}`
+    try {
+      const res = await fetch(url)
+      if (!res.ok) break
+      const json = await res.json()
+      const results = Array.isArray(json.results) ? json.results : []
+      outResults.push(...results)
+      nextPageToken = json.next_page_token
+      if (!nextPageToken) break
+      await new Promise((r) => setTimeout(r, 800))
+    } catch (err) {
+      try { console.error('Google textsearch fetch error', err) } catch {}
+      break
+    }
+  }
+  return outResults
+}
+
+function mapGoogleRawToPlaces(results: unknown[] = [], centerLat: number, centerLon: number): Place[] {
+  type GoogleRaw = {
+    geometry?: { location?: { lat?: number; lng?: number } }
+    place_id?: string
+    // allow place_id to be present without using `any`
+    // other fields are already declared above
+    photos?: { photo_reference?: string }[]
+    name?: string
+    types?: string[]
+    vicinity?: string
+    business_status?: string
+  }
+  return (results || []).map((rIn) => {
+    const r = rIn as GoogleRaw
+    const lat = r.geometry?.location?.lat
+    const lon = r.geometry?.location?.lng
+    const id = r.place_id ? `google:${r.place_id}` : `${lat || 'n'}/${lon || 'n'}`
+  const tags: Record<string, string> = {}
+    if (Array.isArray(r.types)) tags.types = r.types.join(',')
+    if (r.vicinity) tags.vicinity = r.vicinity
+    if (r.business_status) tags.business_status = r.business_status
+    // preserve place_id to allow fetching Place Details (website etc.) later
+    if (r.place_id) tags.place_id = r.place_id
+    const image = Array.isArray(r.photos) && r.photos[0]?.photo_reference
+      ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${encodeURIComponent(r.photos[0].photo_reference)}&key=${GOOGLE_KEY}`
+      : undefined
+    const distance = typeof lat === 'number' && typeof lon === 'number' ? haversineDistance(centerLat, centerLon, lat, lon) : undefined
+    return { id, name: r.name, lat, lon, tags, distance, google_maps_url: r.place_id ? `https://www.google.com/maps/place/?q=place_id:${r.place_id}` : undefined, image }
+  })
+}
+
+async function fetchGooglePlaceDetails(placeId: string) {
+  if (!GOOGLE_KEY) return {} as Record<string, string>
+  try {
+    const qs = new URLSearchParams()
+    qs.set('place_id', placeId)
+    qs.set('key', GOOGLE_KEY)
+    qs.set('fields', 'website,url,formatted_phone_number')
+    qs.set('language', 'ja')
+    const url = `https://maps.googleapis.com/maps/api/place/details/json?${qs.toString()}`
+    const res = await fetch(url)
+    if (!res.ok) return {} as Record<string, string>
+    const json = await res.json()
+    const r = json.result || {}
+    const out: Record<string, string> = {}
+    if (r.website) out.website = r.website
+    if (r.url) out.url = r.url
+    if (r.formatted_phone_number) out.phone = r.formatted_phone_number
+    return out
+  } catch (e) {
+    try { console.error('Place details fetch error', e) } catch {}
+    return {} as Record<string, string>
+  }
+}
+
+async function cachedQueryGoogle(lat: string, lng: string, radius = '20000', q?: string) {
+  const key = `${lat}:${lng}:${radius}`
+  const now = Date.now()
+  const hit = googlePlacesCache.get(key)
+  if (hit && now - hit.ts < GOOGLE_TTL) return hit.data
+
+  // avoid concurrent queries for same key
+  const localLockKey = `glock:${key}`
+  const lockWaitMs = Number(process.env.OVERPASS_LOCAL_LOCK_WAIT_MS || '10000')
+  const waitUntil = Date.now() + lockWaitMs
+  if (localLocks.has(localLockKey)) {
+    while (Date.now() < waitUntil) {
+      await new Promise((r) => setTimeout(r, 200))
+      const cachedNow = googlePlacesCache.get(key)
+      if (cachedNow && Date.now() - cachedNow.ts < GOOGLE_TTL) return cachedNow.data
+    }
+  }
+
+  localLocks.add(localLockKey)
+  try {
+    const categories = Object.keys(CATEGORY_GOOGLE_PARAMS)
+    const out: Record<string, Place[]> = {}
+    const centerLat = Number(lat)
+    const centerLon = Number(lng)
+    for (const cat of categories) {
+      const p = CATEGORY_GOOGLE_PARAMS[cat]
+      const raw = await fetchGoogleNearbyRaw({ location: `${lat},${lng}`, radius: Number(radius), keyword: p?.keyword, type: p?.type }, 2)
+        const places = mapGoogleRawToPlaces(raw, centerLat, centerLon)
+        // Fetch Place Details (website/url) for top N places per category to enrich website info
+        const MAX_DETAILS_PER_CATEGORY = Number(process.env.GOOGLE_DETAILS_PER_CATEGORY || '5')
+        const toDetail = (places || []).filter(pl => {
+          const tags = pl.tags || {}
+          return !tags.website && typeof tags.place_id === 'string'
+        }).slice(0, MAX_DETAILS_PER_CATEGORY)
+        for (const pl of toDetail) {
+          const pid = pl.tags?.place_id
+          if (!pid) continue
+          try {
+            const det = await fetchGooglePlaceDetails(pid)
+            if (det.website) pl.tags = { ...(pl.tags || {}), website: det.website }
+            if (det.url && !pl.google_maps_url) pl.google_maps_url = det.url
+          } catch {}
+          // small throttle
+          await new Promise((r) => setTimeout(r, 150))
+        }
+      out[cat] = places
+      // be polite
+      await new Promise((r) => setTimeout(r, 150))
+    }
+    // If a textual query (mountain name, e.g., "利尻岳") is provided, run a text search for hot springs nearby name variations and merge
+    function isLikelyOnsen(p: Place) {
+      const name = (p.name || '').toLowerCase()
+      const tags = p.tags || {}
+      const types = (tags.types || '').toLowerCase()
+      // Heuristics: name contains 温泉/日帰り/スーパー銭湯/sento/spa or tags.types contains spa/onsen/sento/public_bath
+      if (/温泉|日帰り|スーパー銭湯|公衆浴場|銭湯|日帰り温泉|onsen|sento|spa|sento/i.test(name)) return true
+      if (/(spa|onsen|sento|public_bath|bath|hot_spring)/i.test(types)) return true
+      // vicinity or other tag hints
+      for (const v of Object.values(tags)) {
+        if (typeof v === 'string' && /温泉|スーパー銭湯|公衆浴場|銭湯|日帰り|onsen|sento|spa/i.test(v)) return true
+      }
+      return false
+    }
+
+    if (q && typeof q === 'string' && q.trim().length > 0) {
+      try {
+        const queryVariants = [`${q} 温泉`, `${q} 日帰り温泉`, `${q} スーパー銭湯`, `${q} spa`, `${q} onsen`]
+        const seenIds = new Set<string>(Object.values(out).flat().map(p=>p.id))
+        const merged: Place[] = out.hot_springs ? [...out.hot_springs] : []
+        for (const v of queryVariants) {
+          const textRaw = await fetchGoogleTextSearch(v, 2)
+          const textPlaces = mapGoogleRawToPlaces(textRaw, centerLat, centerLon)
+          for (const tp of textPlaces) {
+            if (!tp.id) continue
+            if (seenIds.has(tp.id)) continue
+            seenIds.add(tp.id)
+            merged.push(tp)
+          }
+          await new Promise((r) => setTimeout(r, 150))
+        }
+        // filter merged to only likely hot springs
+        out.hot_springs = merged.filter(isLikelyOnsen)
+      } catch (e) {
+        try { console.error('Error during text-based hot_springs merge', e) } catch {}
+      }
+    }
+    googlePlacesCache.set(key, { ts: now, data: out })
+    return out
+  } finally {
+    localLocks.delete(localLockKey)
+  }
+}
 
 async function queryOverpassCategory(categoryKey: string, lat: string, lng: string, radius = '20000') {
   const qTemplate = CATEGORY_QUERIES[categoryKey]
@@ -376,22 +627,50 @@ export async function GET(request: Request) {
     const lat = url.searchParams.get('lat')
     const lng = url.searchParams.get('lng')
     const radius = url.searchParams.get('radius') || '20000'
+    const onlyCategory = url.searchParams.get('category')
     if (!lat || !lng) return NextResponse.json({ error: 'lat and lng required' }, { status: 400 })
 
-    const data = await cachedQueryOverpass(lat, lng, radius)
-    const grouped = await groupByCategory(data, Number(lat), Number(lng))
-
-    for (const k of Object.keys(grouped)) {
-      const withCoords = grouped[k].filter((p) => p.lat != null && p.lon != null)
-      const without = grouped[k].filter((p) => p.lat == null || p.lon == null)
-      withCoords.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity))
-      grouped[k] = withCoords.concat(without)
+    // Google-only mode: require GOOGLE_KEY and use Google Places exclusively
+    if (!GOOGLE_KEY) {
+      return NextResponse.json({ ok: false, error: 'GOOGLE_MAPS_API_KEY is required for places search. Set the env var or revert to Overpass mode.' }, { status: 500 })
     }
 
-    return NextResponse.json({ ok: true, data: grouped })
+    if (onlyCategory) {
+      // only allow known categories from Google params
+      if (!Object.prototype.hasOwnProperty.call(CATEGORY_GOOGLE_PARAMS, onlyCategory)) {
+        return NextResponse.json({ ok: false, error: 'unknown category' }, { status: 400 })
+      }
+      const qParam = url.searchParams.get('q') || undefined
+      const all = await cachedQueryGoogle(lat, lng, radius, qParam)
+      const picked = all[onlyCategory] || []
+      const withCoords = picked.filter((p) => p.lat != null && p.lon != null)
+      const without = picked.filter((p) => p.lat == null || p.lon == null)
+      withCoords.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity))
+      const grouped: PlacesResponse = { [onlyCategory]: withCoords.concat(without) }
+      return NextResponse.json({ ok: true, data: grouped })
+    }
+
+  const qParam = url.searchParams.get('q') || undefined
+  const all = await cachedQueryGoogle(lat, lng, radius, qParam)
+    for (const k of Object.keys(all)) {
+      const arr = all[k] || []
+      const withCoords = arr.filter((p) => p.lat != null && p.lon != null)
+      const without = arr.filter((p) => p.lat == null || p.lon == null)
+      withCoords.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity))
+      all[k] = withCoords.concat(without)
+    }
+    return NextResponse.json({ ok: true, data: all })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('places API error', message)
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }
 }
+
+// Keep Overpass helpers exported for future fallback or debugging.
+// They are intentionally preserved even though the current runtime uses Google Places exclusively.
+// Exporting prevents TypeScript from flagging them as unused while keeping them available for reuse.
+// Prevent "defined but never used" warnings by referencing helpers without exporting them.
+void queryOverpassCategory
+void cachedQueryOverpass
+void groupByCategory

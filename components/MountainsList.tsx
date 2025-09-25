@@ -16,7 +16,7 @@ const CATEGORY_MAP: Record<number, string> = {
 
 
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 // 画像クレジット型
 type ImageCredit = {
   author: string;
@@ -69,6 +69,8 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
   // ...（重複useEffectをすべて削除）...
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(12);
+  const [focusId, setFocusId] = useState<string | null>(null);
+  const requestedFocusRef = useRef(false);
   const [filters, setFilters] = useState<SearchFilters>({
     difficulty: '',
     prefecture: '',
@@ -206,6 +208,17 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
+  // Read `focus` query param on mount to know which mountain to focus
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const f = params.get('focus');
+      if (f) setFocusId(f);
+    } catch {
+      // ignore
+    }
+  }, []);
+
   // 検索クエリのデバウンス
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -318,6 +331,48 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
     return () => clearTimeout(timer);
   }, [mountains, debouncedSearchQuery, filters, sortBy, sortOrder]);
 
+  // When focusId is set, find which page contains the mountain and navigate there
+  useEffect(() => {
+    if (!focusId) return;
+    const idx = filteredMountains.findIndex(m => m.id === focusId);
+    if (idx === -1) return;
+    const page = Math.floor(idx / itemsPerPage) + 1;
+    if (page !== currentPage) {
+      requestedFocusRef.current = true;
+      setCurrentPage(page);
+      return;
+    }
+    // already on page -> scroll now
+    requestedFocusRef.current = true;
+    setTimeout(() => {
+      try {
+        const el = document.getElementById(`mountain-${focusId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.classList.add('ring-4', 'ring-indigo-300');
+          setTimeout(() => el.classList.remove('ring-4', 'ring-indigo-300'), 3000);
+        }
+      } catch {}
+    }, 120);
+  }, [focusId, filteredMountains, itemsPerPage, currentPage]);
+
+  // After page changes, if a focus was requested, try to scroll to element
+  useEffect(() => {
+    if (!requestedFocusRef.current) return;
+    requestedFocusRef.current = false;
+    if (!focusId) return;
+    setTimeout(() => {
+      try {
+        const el = document.getElementById(`mountain-${focusId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.classList.add('ring-4', 'ring-indigo-300');
+          setTimeout(() => el.classList.remove('ring-4', 'ring-indigo-300'), 3000);
+        }
+      } catch {}
+    }, 150);
+  }, [currentPage, focusId]);
+
   // フィルター変更時にページを1に戻す
   useEffect(() => {
     setCurrentPage(1);
@@ -329,8 +384,57 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
   const endIndex = startIndex + itemsPerPage;
   const currentMountains = filteredMountains.slice(startIndex, endIndex);
 
+  // 事前にページ配列を計算して reuse する（レンダリング時の不整合を避ける）
+  const pages = Array.from({ length: totalPages }, (_, i) => i + 1).filter((page) => {
+    return Math.abs(page - currentPage) <= 2 || page === 1 || page === totalPages;
+  });
+
+  // totalPages が変わったときに currentPage をクランプする
+  useEffect(() => {
+    // 起動時や totalPages 変更時のデバッグ出力（ブラウザコンソール）
+    try {
+      console.debug('[Pagination] totalPages changed', { totalPages, currentPage, filteredCount: filteredMountains.length, itemsPerPage });
+    } catch {}
+    if (totalPages === 0) {
+      if (currentPage !== 1) setCurrentPage(1);
+      return;
+    }
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+      return;
+    }
+    if (currentPage < 1) {
+      setCurrentPage(1);
+    }
+  }, [totalPages, currentPage, filteredMountains.length, itemsPerPage]);
+
+  // マウント時のデバッグ（URLにfocusがあるか等）
+  useEffect(() => {
+    try {
+      const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+      console.debug('[Pagination] mount', { currentPage, totalPages, focusId, urlSearch: params ? params.toString() : null });
+    } catch {}
+  }, [currentPage, totalPages, focusId]);
+
+  // マウント時に URL に focus がなければ初期ページを 1 にする（初期表示でページ1が出るように）
+  useEffect(() => {
+    try {
+      if (typeof window === 'undefined') return;
+      const params = new URLSearchParams(window.location.search);
+      const f = params.get('focus');
+      if (!f) {
+        setCurrentPage(1);
+      }
+    } catch {}
+    // これはマウント時に一度だけ実行したい
+  }, []);
+
   const goToPage = (page: number) => {
-    setCurrentPage(page);
+    const p = Math.max(1, Math.min(page, totalPages || 1));
+  // デバッグ: クリックされたページと現在のページ・合計を表示（ブラウザコンソールに出ます）
+  console.debug('[Pagination] goToPage click', { requested: page, clamped: p, currentPage, totalPages });
+    if (p === currentPage) return;
+    setCurrentPage(p);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -423,7 +527,25 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
             {currentMountains.map((mountain) => {
               const imgObj = toDisplayImageUrl(mountain.photo_url, 640);
               return (
-                <div key={mountain.id}>
+                <div key={mountain.id} className="relative">
+                  {/* お気に入りボタン（Link の外に出す） */}
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      toggleFavorite(mountain.id);
+                    }}
+                    className="absolute top-3 right-3 z-10 p-2 rounded-full bg-white/80 hover:bg-white shadow-sm"
+                  >
+                    {favorites.has(mountain.id) ? (
+                      <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                      </svg>
+                    ) : (
+                      <svg className="w-5 h-5 text-gray-400 hover:text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                      </svg>
+                    )}
+                  </button>
                   <Link
                     href={`/mountains/${mountain.id}`}
                     className="block group"
@@ -509,12 +631,8 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
                     <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
                 </button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1)
-                  .filter(page => {
-                    return Math.abs(page - currentPage) <= 2 || page === 1 || page === totalPages;
-                  })
-                  .map((page, index, array) => {
-                    const showEllipsis = index > 0 && page - array[index - 1] > 1;
+                {pages.map((page, index) => {
+                    const showEllipsis = index > 0 && page - pages[index - 1] > 1;
                     return (
                       <React.Fragment key={page}>
                         {showEllipsis && (
@@ -771,12 +889,8 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
               </button>
 
               {/* ページ番号 */}
-              {Array.from({ length: totalPages }, (_, i) => i + 1)
-                .filter(page => {
-                  return Math.abs(page - currentPage) <= 2 || page === 1 || page === totalPages;
-                })
-                .map((page, index, array) => {
-                  const showEllipsis = index > 0 && page - array[index - 1] > 1;
+              {pages.map((page, index) => {
+                  const showEllipsis = index > 0 && page - pages[index - 1] > 1;
                   
                   return (
                     <React.Fragment key={page}>
