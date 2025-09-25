@@ -3,10 +3,10 @@ import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import type { MediaItem } from '@/lib/relatedMedia';
 
-export default function RelatedMedia({ items }: { items: MediaItem[] }) {
+export default function RelatedMedia({ items, mountainName }: { items: MediaItem[], mountainName?: string }) {
   const [showExternal, setShowExternal] = useState(false);
   const [externalItems, setExternalItems] = useState<MediaItem[] | null>(null);
-  const queryName = (items && items.length > 0) ? items[0].title : '';
+  const queryName = mountainName && mountainName.length > 0 ? mountainName : (items && items.length > 0 ? items[0].title : '');
 
   useEffect(() => {
     // Reset external items when mountain changes or toggle off

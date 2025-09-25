@@ -259,7 +259,7 @@ export default async function MountainPage({ params }: { params: Promise<{ id: s
 
           {/* 関連ライブラリ */}
           <div className="mt-6">
-            <RelatedMedia items={getRelatedMediaForMountain(mountain.name)} />
+            <RelatedMedia items={getRelatedMediaForMountain(mountain.name)} mountainName={mountain.name} />
           </div>
 
           {/* 登山ルート */}
