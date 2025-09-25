@@ -21,18 +21,18 @@ function StarRating({ rating, total }: { rating: number; total?: number | null }
   return (
     <span className="ml-2 inline-flex items-center gap-1 text-yellow-500">
       {stars.map((s, i) => (
-        <span key={i} className="w-4 h-4">
+        <span key={i} className="w-3 h-3">
           {s === 'full' ? (
-            <StarSolid className="w-4 h-4 text-yellow-400" />
+            <StarSolid className="w-3 h-3 text-yellow-400" />
           ) : (
             // empty star: simple outline using SVG to avoid extra dependency
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-4 h-4 text-yellow-300">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-3 h-3 text-yellow-300">
               <path strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.966a1 1 0 0 0 .95.69h4.174c.969 0 1.371 1.24.588 1.81l-3.377 2.455a1 1 0 0 0-.364 1.118l1.287 3.966c.3.921-.755 1.688-1.54 1.118l-3.377-2.455a1 1 0 0 0-1.176 0L6.98 18.95c-.785.57-1.84-.197-1.54-1.118l1.287-3.966a1 1 0 0 0-.364-1.118L2.986 9.293c-.783-.57-.38-1.81.588-1.81h4.174a1 1 0 0 0 .95-.69l1.286-3.966z" />
             </svg>
           )}
         </span>
       ))}
-      <span className="text-xs text-gray-500">{rounded.toFixed(1)}{total != null ? ` (${total})` : ''}</span>
+      <span className="text-[10px] text-gray-500">{rounded.toFixed(1)}{total != null ? ` (${total})` : ''}</span>
     </span>
   )
 }

@@ -11,8 +11,8 @@ export default function RelatedMedia({ items }: { items: MediaItem[] }) {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           {items.map(item => (
-            <a key={item.id} href={item.url} target="_blank" rel="noopener noreferrer" className="flex items-start space-x-4 p-3 border border-gray-100 rounded hover:shadow">
-              <div className="w-20 h-28 relative flex-shrink-0 bg-gray-100 rounded overflow-hidden">
+            <a key={item.id} href={item.url} target="_blank" rel="noopener noreferrer" className="flex items-start space-x-3 p-2 border border-gray-100 rounded hover:shadow">
+              <div className="w-16 h-24 relative flex-shrink-0 bg-gray-100 rounded overflow-hidden">
                 {item.thumbnail ? (
                   // Use next/image for optimization where possible
                   <Image src={item.thumbnail} alt={item.title} fill sizes="80px" className="object-cover" unoptimized={process.env.NEXT_PUBLIC_IMAGE_UNOPTIMIZED === 'true'} />
@@ -21,9 +21,12 @@ export default function RelatedMedia({ items }: { items: MediaItem[] }) {
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-semibold text-gray-900 truncate">{item.title}</div>
-                <div className="text-xs text-gray-500 mt-1">{item.author || ''} {item.year ? `· ${item.year}` : ''}</div>
-                <div className="text-xs text-blue-600 mt-2">{item.type}</div>
+                <div className="text-xs font-semibold text-gray-900 truncate">{item.title}</div>
+                <div className="text-[10px] text-gray-500 mt-1">{item.author || ''} {item.year ? `· ${item.year}` : ''}</div>
+                <div className="mt-2">
+                  <span className="inline-block text-[9px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100">{item.type}</span>
+                  <span className="ml-2 text-[10px] text-gray-500">{new URL(item.url).hostname.replace('www.','')}</span>
+                </div>
               </div>
             </a>
           ))}
