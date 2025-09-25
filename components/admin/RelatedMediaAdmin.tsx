@@ -8,6 +8,10 @@ export default function RelatedMediaAdmin() {
   const { user, loading } = useAuth();
   const [mountainName, setMountainName] = useState('');
   const [items, setItems] = useState<MediaItem[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editUrl, setEditUrl] = useState('');
+  const [editType, setEditType] = useState<MediaItem['type']>('book');
   const [status, setStatus] = useState<string | null>(null);
   const [newTitle, setNewTitle] = useState('');
   const [newUrl, setNewUrl] = useState('');
@@ -43,6 +47,8 @@ export default function RelatedMediaAdmin() {
 
   async function addItem() {
     if (!mountainName || !newTitle || !newUrl) return setStatus('必須項目を入力してください');
+    // client-side duplicate check
+    if (items.some(it => it.url === newUrl || it.title === newTitle)) return setStatus('既に同じタイトルかURLが存在します');
     const item: MediaItem = { id: `${Date.now()}`, type: newType, title: newTitle, url: newUrl };
     setStatus('追加中...');
     try {
@@ -58,6 +64,56 @@ export default function RelatedMediaAdmin() {
     } catch (e) {
       console.error(e);
       setStatus('追加に失敗しました');
+    }
+  }
+
+  function startEdit(i: MediaItem) {
+    setEditingId(i.id);
+    setEditTitle(i.title);
+    setEditUrl(i.url);
+    setEditType(i.type);
+    setStatus(null);
+  }
+
+  async function saveEdit() {
+    if (!editingId || !mountainName) return setStatus('編集データが不正です');
+    if (!editTitle || !editUrl) return setStatus('必須項目を入力してください');
+    // client-side duplicate check against others
+    if (items.some(it => it.id !== editingId && (it.url === editUrl || it.title === editTitle))) return setStatus('既に同じタイトルかURLが存在します');
+    const item: MediaItem = { id: editingId, type: editType, title: editTitle, url: editUrl };
+    setStatus('保存中...');
+    try {
+      const res = await fetch('/api/related-media', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mountainName, item }) });
+      const j = await res.json();
+      if (j.ok) {
+        setStatus('保存しました');
+        setEditingId(null);
+        await loadItems();
+      } else {
+        setStatus(`保存に失敗: ${j.error || 'unknown'}`);
+      }
+    } catch (e) {
+      console.error(e);
+      setStatus('保存に失敗しました');
+    }
+  }
+
+  async function deleteItem(id: string) {
+    if (!mountainName) return setStatus('山名が必要です');
+    if (!confirm('このアイテムを本当に削除しますか？')) return;
+    setStatus('削除中...');
+    try {
+      const res = await fetch('/api/related-media', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mountainName, itemId: id }) });
+      const j = await res.json();
+      if (j.ok) {
+        setStatus('削除しました');
+        await loadItems();
+      } else {
+        setStatus('削除に失敗しました');
+      }
+    } catch (e) {
+      console.error(e);
+      setStatus('削除に失敗しました');
     }
   }
 
@@ -134,9 +190,34 @@ export default function RelatedMediaAdmin() {
         <h3 className="text-lg font-semibold">{mountainName ? `${mountainName} のアイテム (${items.length})` : 'アイテム一覧'}</h3>
         <div className="space-y-2 mt-2">
           {items.map(i => (
-            <div key={i.id} className="p-2 border rounded">
-              <a href={i.url} target="_blank" rel="noreferrer" className="font-medium">{i.title}</a>
-              <div className="text-xs text-gray-500">{i.type} • {i.url}</div>
+            <div key={i.id} className="p-2 border rounded flex items-start justify-between">
+              <div className="flex-1">
+                {editingId === i.id ? (
+                  <div>
+                    <input className="w-full mb-1 p-1 border rounded" value={editTitle} onChange={e=>setEditTitle(e.target.value)} />
+                    <input className="w-full mb-1 p-1 border rounded" value={editUrl} onChange={e=>setEditUrl(e.target.value)} />
+                    <div className="flex gap-2">
+                      <select value={editType} onChange={e=>setEditType(e.target.value as 'book'|'photobook'|'movie'|'novel'|'essay'|'drama'|'other')} className="p-1 border rounded">
+                        <option value="book">book</option>
+                        <option value="movie">movie</option>
+                        <option value="drama">drama</option>
+                        <option value="other">other</option>
+                      </select>
+                      <button onClick={saveEdit} className="px-2 py-1 bg-green-600 text-white rounded">保存</button>
+                      <button onClick={()=>setEditingId(null)} className="px-2 py-1 border rounded">キャンセル</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <a href={i.url} target="_blank" rel="noreferrer" className="font-medium">{i.title}</a>
+                    <div className="text-xs text-gray-500">{i.type} • {i.url}</div>
+                  </div>
+                )}
+              </div>
+              <div className="ml-4 flex-shrink-0 flex flex-col gap-2">
+                <button onClick={()=>startEdit(i)} className="px-2 py-1 bg-yellow-400 text-black rounded">編集</button>
+                <button onClick={()=>deleteItem(i.id)} className="px-2 py-1 bg-red-600 text-white rounded">削除</button>
+              </div>
             </div>
           ))}
         </div>

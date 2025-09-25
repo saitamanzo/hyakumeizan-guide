@@ -39,11 +39,53 @@ export async function POST(req: Request) {
     if (!mountainName || !item) return NextResponse.json({ error: 'invalid' }, { status: 400 });
     const data = loadData();
     data[mountainName] = data[mountainName] || [];
+    // duplicate check: same URL or same title
+    const exists = data[mountainName].some((it) => (it.url && it.url === item.url) || (it.title && it.title === item.title));
+    if (exists) return NextResponse.json({ ok: false, error: 'duplicate' }, { status: 409 });
     data[mountainName].push(item);
     saveData(data);
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('related-media POST error', err);
+    return NextResponse.json({ error: 'server' }, { status: 500 });
+  }
+}
+
+export async function PUT(req: Request) {
+  try {
+    const body = await req.json();
+    const { mountainName, item } = body as { mountainName: string; item: MediaItem };
+    if (!mountainName || !item || !item.id) return NextResponse.json({ error: 'invalid' }, { status: 400 });
+    const data = loadData();
+    const arr = data[mountainName] || [];
+    const idx = arr.findIndex((it) => it.id === item.id);
+    if (idx === -1) return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    // duplicate check against others (ignore same id)
+    const dup = arr.some((it) => it.id !== item.id && ((it.url && it.url === item.url) || (it.title && it.title === item.title)));
+    if (dup) return NextResponse.json({ ok: false, error: 'duplicate' }, { status: 409 });
+    arr[idx] = item;
+    data[mountainName] = arr;
+    saveData(data);
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error('related-media PUT error', err);
+    return NextResponse.json({ error: 'server' }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    const body = await req.json();
+    const { mountainName, itemId } = body as { mountainName: string; itemId: string };
+    if (!mountainName || !itemId) return NextResponse.json({ error: 'invalid' }, { status: 400 });
+    const data = loadData();
+    const arr = data[mountainName] || [];
+    const newArr = arr.filter((it) => it.id !== itemId);
+    data[mountainName] = newArr;
+    saveData(data);
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error('related-media DELETE error', err);
     return NextResponse.json({ error: 'server' }, { status: 500 });
   }
 }
