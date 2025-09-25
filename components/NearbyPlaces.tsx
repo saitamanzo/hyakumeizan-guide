@@ -6,6 +6,36 @@ import {
   BuildingStorefrontIcon,
   MapIcon,
 } from '@heroicons/react/24/outline'
+import { StarIcon as StarSolid } from '@heroicons/react/24/solid'
+
+function StarRating({ rating, total }: { rating: number; total?: number | null }) {
+  // rating: 0..5 (Google uses 1..5). We'll round to nearest 0.5 and display 5 icons.
+  const r = Math.max(0, Math.min(5, rating))
+  const rounded = Math.round(r * 2) / 2
+  const stars = Array.from({ length: 5 }).map((_, i) => {
+    const idx = i + 1
+    if (rounded >= idx) return 'full'
+    if (rounded + 0.5 === idx) return 'half'
+    return 'empty'
+  })
+  return (
+    <span className="ml-2 inline-flex items-center gap-1 text-yellow-500">
+      {stars.map((s, i) => (
+        <span key={i} className="w-4 h-4">
+          {s === 'full' ? (
+            <StarSolid className="w-4 h-4 text-yellow-400" />
+          ) : (
+            // empty star: simple outline using SVG to avoid extra dependency
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-4 h-4 text-yellow-300">
+              <path strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.966a1 1 0 0 0 .95.69h4.174c.969 0 1.371 1.24.588 1.81l-3.377 2.455a1 1 0 0 0-.364 1.118l1.287 3.966c.3.921-.755 1.688-1.54 1.118l-3.377-2.455a1 1 0 0 0-1.176 0L6.98 18.95c-.785.57-1.84-.197-1.54-1.118l1.287-3.966a1 1 0 0 0-.364-1.118L2.986 9.293c-.783-.57-.38-1.81.588-1.81h4.174a1 1 0 0 0 .95-.69l1.286-3.966z" />
+            </svg>
+          )}
+        </span>
+      ))}
+      <span className="text-xs text-gray-500">{rounded.toFixed(1)}{total != null ? ` (${total})` : ''}</span>
+    </span>
+  )
+}
 import CategoryMap from './CategoryMap'
 
 type Place = {
@@ -18,6 +48,8 @@ type Place = {
   osm_url?: string
   google_maps_url?: string
   image?: string
+  rating?: number
+  user_ratings_total?: number
 }
 
 type PlacesResponse = Record<string, Place[]>
@@ -237,14 +269,18 @@ export default function NearbyPlaces({ lat, lng, radius = 20000, mountainName }:
                           const hp = normalize(homepage)
                           const gm = p.google_maps_url
                           const osm = p.osm_url
-                          // スポット名は Google Maps を優先して開く。なければ公式サイト、さらに無ければ OSM を使う。
-                          const nameHref = gm || hp || osm
+                          // スポット名は公式サイトを優先して開く。なければ Google Maps、さらに無ければ OSM を使う。
+                          const nameHref = hp || gm || osm
                           return (
                             <div className="flex items-baseline gap-2">
                               {nameHref ? (
                                 <a href={nameHref} target="_blank" rel="noopener noreferrer" className="text-gray-800 hover:underline">{p.name || '無名スポット'}</a>
                               ) : (
                                 <span className="text-gray-800">{p.name || '無名スポット'}</span>
+                              )}
+                              {/* rating display: star visualization */}
+                              {typeof p.rating === 'number' && (
+                                <StarRating rating={p.rating} total={p.user_ratings_total} />
                               )}
                               {/* 公式サイトがある場合は小さなリンクを添える */}
                               {hp && (
@@ -369,13 +405,16 @@ export default function NearbyPlaces({ lat, lng, radius = 20000, mountainName }:
                                   const hp = normalize(homepage)
                                   const gm = p.google_maps_url
                                   const osm = p.osm_url
-                                  const nameHref = gm || hp || osm
+                                  const nameHref = hp || gm || osm
                                   return (
                                     <div className="flex items-baseline gap-2">
                                       {nameHref ? (
                                         <a href={nameHref} target="_blank" rel="noopener noreferrer" className="text-gray-800 hover:underline">{p.name || '無名スポット'}</a>
                                       ) : (
                                         <span className="text-gray-800">{p.name || '無名スポット'}</span>
+                                      )}
+                                      {typeof p.rating === 'number' && (
+                                        <StarRating rating={p.rating} total={p.user_ratings_total} />
                                       )}
                                       {hp && (
                                         <a href={hp} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">公式サイト</a>

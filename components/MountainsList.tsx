@@ -219,6 +219,25 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
     }
   }, []);
 
+  // マウント時に ?page= があれば currentPage を初期化する
+  useEffect(() => {
+    try {
+      if (typeof window === 'undefined') return;
+      const params = new URLSearchParams(window.location.search);
+      const p = params.get('page');
+      const f = params.get('focus');
+      if (f) return; // focus がある場合は focus ロジックを優先
+      if (p) {
+        const n = Number(p);
+        if (Number.isFinite(n) && n >= 1) {
+          setCurrentPage(Math.max(1, Math.min(n, Math.max(1, Math.ceil(filteredMountains.length / itemsPerPage)))));
+        }
+      }
+    } catch {}
+  // filteredMountains.length や itemsPerPage が変わる前提で初期化だけ行いたいので空 deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // 検索クエリのデバウンス
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -433,7 +452,18 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
     const p = Math.max(1, Math.min(page, totalPages || 1));
   // デバッグ: クリックされたページと現在のページ・合計を表示（ブラウザコンソールに出ます）
   console.debug('[Pagination] goToPage click', { requested: page, clamped: p, currentPage, totalPages });
-    if (p === currentPage) return;
+    // URL に page クエリを反映して履歴・再読み込みで安定させる
+    try {
+      const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+      // If a focus param exists, clear it when the user manually navigates pages
+      params.delete('focus')
+      params.set('page', String(p));
+      const newUrl = `${window.location.pathname}?${params.toString()}`;
+      // push ではなく replace で履歴汚染を避ける
+      if (typeof window !== 'undefined') window.history.replaceState({}, '', newUrl);
+    } catch {}
+    // clear focus state so the focus effect won't override this manual page change
+    try { setFocusId(null) } catch {}
     setCurrentPage(p);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -619,6 +649,7 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
             <div className="mt-8 flex justify-center">
               <nav className="inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
                 <button
+                  type="button"
                   onClick={() => goToPage(currentPage - 1)}
                   disabled={currentPage === 1}
                   className={`relative inline-flex items-center px-2 py-2 rounded-l-md border text-sm font-medium ${
@@ -641,6 +672,7 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
                           </span>
                         )}
                         <button
+                          type="button"
                           key={`page-btn-${page}`}
                           onClick={() => goToPage(page)}
                           className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
@@ -655,6 +687,7 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
                     );
                   })}
                 <button
+                  type="button"
                   onClick={() => goToPage(currentPage + 1)}
                   disabled={currentPage === totalPages}
                   className={`relative inline-flex items-center px-2 py-2 rounded-r-md border text-sm font-medium ${
@@ -875,6 +908,7 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
             <nav className="inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
               {/* 前のページ */}
               <button
+                type="button"
                 onClick={() => goToPage(currentPage - 1)}
                 disabled={currentPage === 1}
                 className={`relative inline-flex items-center px-2 py-2 rounded-l-md border text-sm font-medium ${
@@ -900,6 +934,7 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
                         </span>
                       )}
                       <button
+                        type="button"
                         onClick={() => goToPage(page)}
                         className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
                           currentPage === page
@@ -915,6 +950,7 @@ export default function MountainsList({ initialMountains }: MountainsListProps) 
 
               {/* 次のページ */}
               <button
+                type="button"
                 onClick={() => goToPage(currentPage + 1)}
                 disabled={currentPage === totalPages}
                 className={`relative inline-flex items-center px-2 py-2 rounded-r-md border text-sm font-medium ${

@@ -10,6 +10,8 @@ type Place = {
   osm_url?: string
   google_maps_url?: string
   image?: string
+  rating?: number
+  user_ratings_total?: number
 }
 
 type PlacesResponse = Record<string, Place[]>
@@ -187,6 +189,8 @@ function mapGoogleRawToPlaces(results: unknown[] = [], centerLat: number, center
     types?: string[]
     vicinity?: string
     business_status?: string
+    rating?: number
+    user_ratings_total?: number
   }
   return (results || []).map((rIn) => {
     const r = rIn as GoogleRaw
@@ -203,32 +207,43 @@ function mapGoogleRawToPlaces(results: unknown[] = [], centerLat: number, center
       ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${encodeURIComponent(r.photos[0].photo_reference)}&key=${GOOGLE_KEY}`
       : undefined
     const distance = typeof lat === 'number' && typeof lon === 'number' ? haversineDistance(centerLat, centerLon, lat, lon) : undefined
-    return { id, name: r.name, lat, lon, tags, distance, google_maps_url: r.place_id ? `https://www.google.com/maps/place/?q=place_id:${r.place_id}` : undefined, image }
+    return { id, name: r.name, lat, lon, tags, distance, google_maps_url: r.place_id ? `https://www.google.com/maps/place/?q=place_id:${r.place_id}` : undefined, image, rating: typeof r.rating === 'number' ? r.rating : undefined, user_ratings_total: typeof r.user_ratings_total === 'number' ? r.user_ratings_total : undefined }
   })
 }
 
 async function fetchGooglePlaceDetails(placeId: string) {
-  if (!GOOGLE_KEY) return {} as Record<string, string>
+  if (!GOOGLE_KEY) return {} as PlaceDetailsResult
   try {
     const qs = new URLSearchParams()
     qs.set('place_id', placeId)
     qs.set('key', GOOGLE_KEY)
-    qs.set('fields', 'website,url,formatted_phone_number')
+    // Request website/url/phone and rating metadata
+    qs.set('fields', 'website,url,formatted_phone_number,rating,user_ratings_total')
     qs.set('language', 'ja')
     const url = `https://maps.googleapis.com/maps/api/place/details/json?${qs.toString()}`
     const res = await fetch(url)
     if (!res.ok) return {} as Record<string, string>
     const json = await res.json()
     const r = json.result || {}
-    const out: Record<string, string> = {}
+  const out: PlaceDetailsResult = {}
     if (r.website) out.website = r.website
     if (r.url) out.url = r.url
     if (r.formatted_phone_number) out.phone = r.formatted_phone_number
+    if (typeof r.rating === 'number') out.rating = r.rating
+    if (typeof r.user_ratings_total === 'number') out.user_ratings_total = r.user_ratings_total
     return out
   } catch (e) {
     try { console.error('Place details fetch error', e) } catch {}
-    return {} as Record<string, string>
+    return {} as PlaceDetailsResult
   }
+}
+
+type PlaceDetailsResult = {
+  website?: string
+  url?: string
+  phone?: string
+  rating?: number
+  user_ratings_total?: number
 }
 
 async function cachedQueryGoogle(lat: string, lng: string, radius = '20000', q?: string) {

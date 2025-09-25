@@ -8,8 +8,7 @@ export type MediaItem = {
   url: string; // 外部リンク
 };
 
-// 山名をキーにして関連メディアを返す簡易マッピング
-// 将来的にはDBや外部APIに差し替え可能
+// Small in-memory map for manual entries.
 const MEDIA_MAP: Record<string, MediaItem[]> = {
   '利尻岳': [
     {
@@ -20,15 +19,6 @@ const MEDIA_MAP: Record<string, MediaItem[]> = {
       year: '2010',
       thumbnail: '/file.svg',
       url: 'https://www.amazon.co.jp/s?k=%E5%88%A9%E5%B0%BB%E5%B2%B3+%E6%9C%AC'
-    },
-    {
-      id: 'rishiri-photobook-1',
-      type: 'photobook',
-      title: '利尻の風景写真集',
-      author: '写真家 例2',
-      year: '2015',
-      thumbnail: '/file.svg',
-      url: 'https://www.amazon.co.jp/s?k=%E5%88%A9%E5%B0%BB+%E5%86%99%E7%9C%9F%E9%9B%86'
     }
   ],
   '富士山': [
@@ -40,41 +30,99 @@ const MEDIA_MAP: Record<string, MediaItem[]> = {
       year: '2005',
       thumbnail: '/file.svg',
       url: 'https://ja.wikipedia.org/wiki/%E5%AF%8C%E5%A3%AB%E5%B1%B1'
-    },
-    {
-      id: 'fuji-photobook-1',
-      type: 'photobook',
-      title: '富士山写真集',
-      author: '写真家 例',
-      year: '2012',
-      thumbnail: '/file.svg',
-      url: 'https://www.amazon.co.jp/s?k=%E5%AF%8C%E5%A3%AB%E5%B1%B1+%E5%86%99%E7%9C%9F%E9%9B%86'
-    },
-    {
-      id: 'fuji-movie-1',
-      type: 'movie',
-      title: '富士山ドキュメンタリー',
-      thumbnail: '/file.svg',
-      url: 'https://www.youtube.com/results?search_query=%E5%AF%8C%E5%A3%AB%E5%B1%B1+%E3%83%89%E3%82%AD%E3%83%A5%E3%83%81%E3%83%A1%E3%83%B3%E3%82%BF%E3%83%AA%E3%83%BC'
     }
   ]
 };
 
+// エイリアス辞書（よくある別表記）
+const ALIASES: Record<string, string[]> = {
+  '富士': ['富士山'],
+  '富士山': ['富士']
+};
+
+function normalizeName(s: string) {
+  return s
+    .normalize('NFKC')
+    .replace(/\s+/g, '')
+    .replace(/[・・,.。､]/g, '')
+    .replace(/(岳|山|ヶ岳|岳$|山$)/g, '')
+    .toLowerCase();
+}
+
+// レーベンシュタイン距離（小さめの文字列用）
+function levenshtein(a: string, b: string) {
+  const m = a.length;
+  const n = b.length;
+  const dp: number[][] = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
+    }
+  }
+  return dp[m][n];
+}
+
+function makeSearchFallback(name: string): MediaItem[] {
+  const q = encodeURIComponent(name);
+  const items: MediaItem[] = [
+    { id: `search-amazon-${q}`, type: 'book', title: `${name} をAmazonで検索`, url: `https://www.amazon.co.jp/s?k=${q}`, thumbnail: '/file.svg' },
+    { id: `search-youtube-${q}`, type: 'movie', title: `${name} をYouTubeで検索`, url: `https://www.youtube.com/results?search_query=${q}`, thumbnail: '/file.svg' },
+    { id: `search-wikipedia-${q}`, type: 'other', title: `${name} のWikipedia`, url: `https://ja.wikipedia.org/wiki/${q}`, thumbnail: '/file.svg' },
+    { id: `search-googlebooks-${q}`, type: 'book', title: `${name} を書籍で検索`, url: `https://www.google.co.jp/search?tbm=bks&q=${q}`, thumbnail: '/file.svg' }
+  ];
+  return items;
+}
+
 export function getRelatedMediaForMountain(name: string | undefined | null): MediaItem[] {
   if (!name) return [];
-  const exact = MEDIA_MAP[name];
-  if (exact && exact.length > 0) return exact;
-  // 正規化して比較（接尾辞の違いを吸収）
-  const normalize = (s: string) => s.replace(/\s+/g, '').replace(/(岳|山|ヶ岳|岳$|山$)/g, '').toLowerCase();
-  const n = normalize(name);
-  for (const key of Object.keys(MEDIA_MAP)) {
-    if (key === name) continue; // 既に試した
-    if (normalize(key) === n) return MEDIA_MAP[key];
+  // 1) まずは直キー
+  if (MEDIA_MAP[name] && MEDIA_MAP[name].length) return MEDIA_MAP[name];
+
+  const n = normalizeName(name);
+
+  // 2) エイリアスを試す（短いリスト）
+  for (const [k, vs] of Object.entries(ALIASES)) {
+    if (k === name || vs.includes(name)) continue;
+    if (normalizeName(k) === n || vs.map(normalizeName).includes(n)) {
+      if (MEDIA_MAP[k] && MEDIA_MAP[k].length) return MEDIA_MAP[k];
+    }
   }
-  // 部分一致も試みる
+
+  // 3) 正規化して完全一致
   for (const key of Object.keys(MEDIA_MAP)) {
-    const kn = normalize(key);
+    if (normalizeName(key) === n) return MEDIA_MAP[key];
+  }
+
+  // 4) トークン部分一致（複合語対応）
+  const tokens = n.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+  if (tokens.length) {
+    for (const key of Object.keys(MEDIA_MAP)) {
+      const kn = normalizeName(key);
+      if (tokens.every(t => kn.includes(t))) return MEDIA_MAP[key];
+    }
+  }
+
+  // 5) ファジー一致（Levenshtein）: 閾値は長さに応じて
+  let best: { key: string; dist: number } | null = null;
+  for (const key of Object.keys(MEDIA_MAP)) {
+    const kn = normalizeName(key);
+    const d = levenshtein(n, kn);
+    const thresh = Math.max(1, Math.floor(Math.min(n.length, kn.length) * 0.3));
+    if (d <= thresh) {
+      if (!best || d < best.dist) best = { key, dist: d };
+    }
+  }
+  if (best) return MEDIA_MAP[best.key];
+
+  // 6) 部分一致（逆も含む）
+  for (const key of Object.keys(MEDIA_MAP)) {
+    const kn = normalizeName(key);
     if (kn.includes(n) || n.includes(kn)) return MEDIA_MAP[key];
   }
-  return [];
+
+  // 7) 見つからない場合は外部検索へのフォールバックを返す
+  return makeSearchFallback(name);
 }
