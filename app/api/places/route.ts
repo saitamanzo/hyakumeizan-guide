@@ -73,6 +73,20 @@ const CATEGORY_QUERIES: Record<string, string> = {
     way(around:RADIUS,LAT,LNG)[leisure=ski_resort];
     relation(around:RADIUS,LAT,LNG)[leisure=ski_resort];
   `,
+  // 管理釣り場（釣り堀、管理された釣り場）
+  managed_fishing: `
+    node(around:RADIUS,LAT,LNG)[leisure=fishing];
+    node(around:RADIUS,LAT,LNG)[name~"管理釣り場|釣り堀|管理釣り|フィッシング"i];
+    way(around:RADIUS,LAT,LNG)[leisure=fishing];
+    way(around:RADIUS,LAT,LNG)[name~"管理釣り場|釣り堀|管理釣り|フィッシング"i];
+    relation(around:RADIUS,LAT,LNG)[leisure=fishing];
+  `,
+  // 渓流釣り・渓流移り場（渓流に関連する釣りスポット）
+  river_fishing: `
+    node(around:RADIUS,LAT,LNG)[name~"渓流|渓流釣り|渓流移り場"i];
+    way(around:RADIUS,LAT,LNG)[name~"渓流|渓流釣り|渓流移り場"i];
+    relation(around:RADIUS,LAT,LNG)[name~"渓流|渓流釣り|渓流移り場"i];
+  `,
   camp_sites: `
     node(around:RADIUS,LAT,LNG)[tourism=camp_site];
     node(around:RADIUS,LAT,LNG)[leisure=camp_site];
@@ -111,6 +125,10 @@ const CATEGORY_GOOGLE_PARAMS: Record<string, { keyword?: string; type?: string }
   camp_sites: { keyword: 'キャンプ場 campground campsite' },
   attractions: { keyword: '観光 観光地 viewpoint', type: 'tourist_attraction' },
 }
+
+// Google-specific params for fishing-related categories
+CATEGORY_GOOGLE_PARAMS['managed_fishing'] = { keyword: '釣り堀 管理釣り場 管理釣り fishing pond', type: 'point_of_interest' }
+CATEGORY_GOOGLE_PARAMS['river_fishing'] = { keyword: '渓流 渓流釣り river fishing', type: 'point_of_interest' }
 
 // Simple in-memory cache for Google Places grouped results
 const googlePlacesCache = new Map<string, { ts: number; data: Record<string, Place[]> }>()
@@ -584,6 +602,18 @@ async function groupByCategory(overpassData: OverpassResponse, centerLat: number
     if (el.tags.leisure === 'spa' || el.tags.amenity === 'spa' || el.tags.hot_spring) {
       out.hot_springs = out.hot_springs || []
       out.hot_springs.push(enriched)
+      continue
+    }
+    // 管理釣り場判定: leisure=fishing または名前に釣り堀など
+    if (el.tags.leisure === 'fishing' || (el.tags.name && /釣り堀|管理釣り場|管理釣り|fishing/i.test(String(el.tags.name)))) {
+      out.managed_fishing = out.managed_fishing || []
+      out.managed_fishing.push(enriched)
+      continue
+    }
+    // 渓流釣り判定: 名前やタグに渓流が含まれる場合
+    if ((el.tags.name && /渓流|渓流釣り|渓流移り場/i.test(String(el.tags.name))) || (el.tags.natural && /stream|river/i.test(String(el.tags.natural)))) {
+      out.river_fishing = out.river_fishing || []
+      out.river_fishing.push(enriched)
       continue
     }
     if (el.tags.tourism === 'camp_site' || el.tags.leisure === 'camp_site' || el.tags.amenity === 'camp_site' || /camp[_ ]?site/i.test(JSON.stringify(el.tags))) {

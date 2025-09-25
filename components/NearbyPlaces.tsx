@@ -68,6 +68,9 @@ const SPOT_CATEGORY_MAP: Record<string, string> = {
   camp_sites: 'キャンプ場',
   restaurants: '食堂',
   others: 'その他',
+  fishing_spots: '釣り場',
+  managed_fishing: '管理釣り場',
+  river_fishing: '渓流移り場',
 }
 
 // 優先的に表示するカテゴリキーの順番
@@ -77,6 +80,9 @@ const CATEGORY_ORDER = [
   'hot_springs',
   'soba_restaurants',
   'mountain_huts',
+  'managed_fishing',
+  'fishing_spots',
+  'river_fishing',
   'camp_sites',
   'hotels',
   'restaurants',
